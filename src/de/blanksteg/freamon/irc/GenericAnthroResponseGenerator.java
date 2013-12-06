@@ -1,9 +1,6 @@
 package de.blanksteg.freamon.irc;
 
-import java.util.Set;
-
 import org.pircbotx.Channel;
-import org.pircbotx.User;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.PrivateMessageEvent;
 
@@ -23,9 +20,6 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
 
     /** The system time we last sent a message. */
     private long lastMessage;
-
-    /** Whether or not responses may contain present nicknames */
-    private boolean allowAccidentalHighlight = false;
 
     /**
      * Create a new instance using the given {@link ResponseGenerator} as a base.
@@ -60,28 +54,6 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
 
         if (response != null) {
             String senderNick = event.getUser().getNick();
-
-            // Prevent accidental highlighting
-            if (!allowAccidentalHighlight) {
-                // Check which users are in the channel and filter their names
-                final Set<User> userSet = channel.getUsers();
-                for (final User user : userSet) {
-                    final String nick = user.getNick();
-
-                    // We're allowed to highlight the sender and the response should contain the nick
-                    if (nick.equals(senderNick) || !response.contains(nick)) {
-                        continue;
-                    }
-
-                    // Append underscores until we reach a non-existing nick
-                    String newNick = nick;
-                    do {
-                        newNick += "_";
-                    } while (userSet.contains(newNick));
-
-                    response = response.replaceAll(nick, newNick);
-                }
-            }
 
             this.handleMessage();
             String lowerResponse = response.toLowerCase();
@@ -125,25 +97,6 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
     private void handleMessage() {
         Configuration.simulateDelay();
         this.lastMessage = System.currentTimeMillis();
-    }
-
-    /**
-     * Set whether or not responses may contain present nicknames.
-     * 
-     * @param allowAccidentalHighlight
-     *            True to allow it, false to modify nicks to prevent highlights
-     */
-    public void setAllowAccidentalHighlight(final boolean allowAccidentalHighlight) {
-        this.allowAccidentalHighlight = allowAccidentalHighlight;
-    }
-
-    /**
-     * Whether or not responses may contain present nicknames.
-     * 
-     * @return True when allowed, false when modifying nicks to prevent highlights
-     */
-    public boolean isAllowingAccidentalHighlight() {
-        return allowAccidentalHighlight;
     }
 
 }

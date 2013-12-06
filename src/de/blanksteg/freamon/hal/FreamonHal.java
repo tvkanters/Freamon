@@ -7,14 +7,17 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jibble.jmegahal.JMegaHal;
 import org.pircbotx.Channel;
@@ -52,13 +55,14 @@ import de.blanksteg.freamon.nlp.WordType;
  * 
  * FreamonHal makes this functionality publicly available via the
  * {@link FreamonHal#generateRelevantPrivateMessage(PrivateMessageEvent) and
- * {@link FreamonHal#generateRelevantPublicMessage(MessageEvent) methods which react to the two types of conversation
- * indicated by their name.
  * 
- * This class is meant to be serialized to persist the brainstate across executions. However, because the tracking of
- * conversations is stored in {@link WeakReference}s and the PhraseAnalyzer requires special deserialization, it
- * contains transient fields that need to be manually reinitialized with the {@link FreamonHal#reinit(File)} method
- * after the object is read.
+ * @link FreamonHal#generateRelevantPublicMessage(MessageEvent) methods which react to the two types of conversation
+ *       indicated by their name.
+ * 
+ *       This class is meant to be serialized to persist the brainstate across executions. However, because the tracking
+ *       of conversations is stored in {@link WeakReference}s and the PhraseAnalyzer requires special deserialization,
+ *       it contains transient fields that need to be manually reinitialized with the {@link FreamonHal#reinit(File)}
+ *       method after the object is read.
  * 
  * @author Marc Müller
  */
@@ -81,6 +85,41 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
     private transient File baseFile;
     /** Simple boolean flag to avoid double reinitialization. */
     private transient boolean initialized = false;
+
+    /** The characters to replace in nicknames that would accidentally highlight people */
+    private static final HashMap<Character, Character[]> charReplacements = new HashMap<Character, Character[]>();
+    /** The maximum amount of tries per nickname to replace it, prevents infinite loops */
+    private static final int MAX_REPLACEMENT_TRIES = 10;
+
+    static {
+        // Fill the character replacements for accidental 
+        charReplacements.put('a', new Character[] { 'e' });
+        charReplacements.put('b', new Character[] { 'd', 'p' });
+        charReplacements.put('c', new Character[] { 'q', 'k' });
+        charReplacements.put('d', new Character[] { 'b', 'p' });
+        charReplacements.put('e', new Character[] { 'a' });
+        charReplacements.put('f', new Character[] { 'b' });
+        charReplacements.put('g', new Character[] { 'q' });
+        charReplacements.put('h', new Character[] { 'k' });
+        charReplacements.put('i', new Character[] { 'u', 'y' });
+        charReplacements.put('j', new Character[] { 'y' });
+        charReplacements.put('k', new Character[] { 'c', 'q' });
+        charReplacements.put('l', new Character[] { 'w', 'r' });
+        charReplacements.put('m', new Character[] { 'n' });
+        charReplacements.put('n', new Character[] { 'm' });
+        charReplacements.put('o', new Character[] { 'u' });
+        charReplacements.put('p', new Character[] { 'b', 'd' });
+        charReplacements.put('q', new Character[] { 'c', 'k' });
+        charReplacements.put('r', new Character[] { 'l' });
+        charReplacements.put('s', new Character[] { 'c', 'z' });
+        charReplacements.put('t', new Character[] { 'p', 'd' });
+        charReplacements.put('u', new Character[] { 'o' });
+        charReplacements.put('v', new Character[] { 'f', 'w' });
+        charReplacements.put('w', new Character[] { 'v' });
+        charReplacements.put('x', new Character[] { 'z' });
+        charReplacements.put('y', new Character[] { 'i' });
+        charReplacements.put('z', new Character[] { 'c', 'x' });
+    }
 
     /**
      * Create a new instance that was loaded from the given file.
@@ -350,12 +389,12 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
         Channel channel = event.getChannel();
         String name = channel.getName();
         ConversationState state = this.ensureConversationState(name);
-        return this.generateRelevantMessage(state);
+        return preventHighlighting(generateRelevantMessage(state), event);
     }
 
     /**
      * Generates a response relevant to the private conversation with the person that caused the
-     * {@link PrivateMessageEvent}. The triggers for receiving a message are called to ensure an up- to-date
+     * {@link PrivateMessageEvent}. The triggers for receiving a message are called to ensure an up-to-date
      * conversation state.
      * 
      * @param event
@@ -368,7 +407,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
         User user = event.getUser();
         String name = user.getNick();
         ConversationState state = this.ensureConversationState(name);
-        return this.generateRelevantMessage(state);
+        return generateRelevantMessage(state);
     }
 
     /**
@@ -494,6 +533,70 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
             String newName = repl.next();
             l.trace("Replacing " + oldName + " with " + newName);
             message = message.replaceAll("(?i)" + oldName, newName);
+        }
+
+        return message;
+    }
+
+    /**
+     * Prevent accidental highlighting of users in the channel. Highlighting the sender is still allowed.
+     * 
+     * @param message
+     *            The message to filter
+     * @param event
+     *            The event that the message was sent with
+     * 
+     * @return The message with accidental highlights replace
+     */
+    private String preventHighlighting(String message, final MessageEvent<Network> event) {
+        final Random rand = new Random();
+
+        // Check which users are in the channel and filter their names
+        final Set<User> userSet = event.getChannel().getUsers();
+        for (final User user : userSet) {
+            final String nick = user.getNick();
+
+            // We're allowed to highlight the sender
+            if (nick.equals(event.getUser().getNick())) {
+                continue;
+            }
+            int tries = 0;
+
+            // Replace each occurence separately
+            while (StringUtils.containsIgnoreCase(message, nick) && tries <= MAX_REPLACEMENT_TRIES) {
+                // Get the nick with correct capitalisation
+                final int nickIndex = message.indexOf(nick);
+                String newNick = message.substring(nickIndex, nickIndex + nick.length());
+
+                // Decide which char to replace
+                final int pos = rand.nextInt(newNick.length());
+                final Character selectedChar = newNick.charAt(pos);
+                Character replacementChar = null;
+
+                if (Character.isDigit(selectedChar)) {
+                    // Digits can just receive another number
+                    replacementChar = Integer.toString(rand.nextInt(10)).charAt(0);
+                } else {
+                    // Determine the replacement char based on its mapping
+                    final Character[] replacements = charReplacements.get(Character.toLowerCase(selectedChar));
+                    if (replacements != null) {
+                        // Randomly pick a possible replacement and make it match the case
+                        replacementChar = replacements[rand.nextInt(replacements.length)];
+                        if (Character.isUpperCase(selectedChar)) {
+                            replacementChar = Character.toUpperCase(replacementChar);
+                        }
+                    }
+                }
+
+                // If we found a good replacement, switch the chars
+                if (replacementChar != null) {
+                    newNick = newNick.substring(0, pos) + replacementChar + newNick.substring(pos + 1);
+                    message = message.replaceFirst("(?i)" + nick, newNick);
+                    tries = 0;
+                } else {
+                    ++tries;
+                }
+            }
         }
 
         return message;
