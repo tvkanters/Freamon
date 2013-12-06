@@ -63,12 +63,13 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
 
             // Prevent accidental highlighting
             if (!allowAccidentalHighlight) {
+                // Check which users are in the channel and filter their names
                 final Set<User> userSet = channel.getUsers();
                 for (final User user : userSet) {
                     final String nick = user.getNick();
 
-                    // We're allowed to highlight the sender
-                    if (nick.equals(senderNick)) {
+                    // We're allowed to highlight the sender and the response should contain the nick
+                    if (nick.equals(senderNick) || !response.contains(nick)) {
                         continue;
                     }
 
