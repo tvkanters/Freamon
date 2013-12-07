@@ -559,24 +559,26 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
      */
     private String preventHighlighting(String message, final MessageEvent<Network> event) {
         final Random rand = new Random();
-        final String botNick = event.getBot().getNick();
-        final String senderNick = event.getUser().getNick();
+        final String botNickLower = event.getBot().getNick().toLowerCase();
+        final String senderNickLower = event.getUser().getNick().toLowerCase();
+        String messageLower = message.toLowerCase();
 
         // Check which users are in the channel and filter their names
         final Set<User> userSet = event.getChannel().getUsers();
         for (final User user : userSet) {
             final String nick = user.getNick();
+            final String nickLower = nick.toLowerCase();
 
-            // We're allowed to highlight the sender and ourselves
-            if (nick.equals(senderNick) || nick.equals(botNick)) {
+            // We're allowed to highlight the sender and ourselves, or any one-letter name
+            if (senderNickLower.contains(nickLower) || botNickLower.contains(nickLower) || nick.length() == 1) {
                 continue;
             }
             int tries = 0;
 
             // Replace each occurence separately
-            while (StringUtils.containsIgnoreCase(message, nick) && tries <= MAX_REPLACEMENT_TRIES) {
+            while (messageLower.contains(nickLower) && tries <= MAX_REPLACEMENT_TRIES) {
                 // Get the nick with correct capitalisation
-                final int nickIndex = message.indexOf(nick);
+                final int nickIndex = messageLower.indexOf(nickLower);
                 String newNick = message.substring(nickIndex, nickIndex + nick.length());
 
                 // Decide which char to replace
@@ -603,6 +605,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
                 if (replacementChar != null) {
                     newNick = newNick.substring(0, pos) + replacementChar + newNick.substring(pos + 1);
                     message = message.replaceFirst("(?i)" + nick, newNick);
+                    messageLower = message.toLowerCase();
                     tries = 0;
                 } else {
                     ++tries;
