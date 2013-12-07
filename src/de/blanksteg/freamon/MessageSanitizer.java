@@ -88,7 +88,7 @@ public abstract class MessageSanitizer
    *   <li>Replace any leading non-word characters.</li>
    *   <li>Capitalize the first letter.</li>
    *   <li>Remove any string from {@link MessageSanitizer#REDUCE} and replace it with it's compacted counterpart.</li>
-   *   <li>Replace erroneous g's being placed at either start or end of the message.</li>
+   *   <li>Replace erroneous "g"s being placed at either start or end of the message.</li>
    *   <li>Insert a space to every . ! ? or , that directly leads into a word.</li>
    *   <li>Add a . if neither . nor ? nor ! is present at the end of the message.</li>
    * </ul>
@@ -112,12 +112,9 @@ public abstract class MessageSanitizer
       }
     }
     
-    b = b.replaceAll("^g ", "");
-    b = b.replaceAll(" g$", "");
-    b = b.replaceAll(".[.]\\w", ". ");
-    b = b.replaceAll(".[!]\\w", "! ");
-    b = b.replaceAll(".[?]\\w", "? ");
-    b = b.replaceAll(".[,]\\w", ", ");
+    b = b.replaceAll("(^g | g$)", "");
+    b = b.replaceAll(".([.?!,])\\w", "$1 ");
+    b = b.replaceAll("([^.?!])$", "$1.");
     
     return b;
   }
