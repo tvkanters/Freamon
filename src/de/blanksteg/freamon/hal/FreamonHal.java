@@ -550,14 +550,16 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
      */
     private String preventHighlighting(String message, final MessageEvent<Network> event) {
         final Random rand = new Random();
+        final String botNick = event.getBot().getNick();
+        final String senderNick = event.getUser().getNick();
 
         // Check which users are in the channel and filter their names
         final Set<User> userSet = event.getChannel().getUsers();
         for (final User user : userSet) {
             final String nick = user.getNick();
 
-            // We're allowed to highlight the sender
-            if (nick.equals(event.getUser().getNick())) {
+            // We're allowed to highlight the sender and ourselves
+            if (nick.equals(senderNick) || nick.equals(botNick)) {
                 continue;
             }
             int tries = 0;
