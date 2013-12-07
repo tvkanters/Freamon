@@ -1,6 +1,6 @@
 package de.blanksteg.freamon.irc;
 
-import org.pircbotx.Channel;
+import org.apache.commons.lang.StringUtils;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.PrivateMessageEvent;
 
@@ -32,36 +32,33 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
     }
 
     @Override
-    public String respondPublic(MessageEvent<Network> event) {
-        Network target = event.getBot();
-        Channel channel = event.getChannel();
-        String channelName = channel.getName();
+    public String respondPublic(final MessageEvent<Network> event) {
+        final Network target = event.getBot();
+        final String botName = target.getName();
+        final String message = event.getMessage();
+        final boolean botMentioned = StringUtils.containsIgnoreCase(message, botName);
 
         String response = null;
-        if (this.hasCooledDown() && target.isActiveChannel(channelName)) {
-            String nickName = target.getName().toLowerCase();
 
-            if (event.getMessage().toLowerCase().contains(nickName)) {
+        if (target.isActiveChannel(event.getChannel().getName())) {
+            // When we're mentioned, ignore the cooldown
+            if (botMentioned) {
                 if (Configuration.rollPingResponse()) {
-                    response = this.base.respondPublic(event);
+                    response = base.respondPublic(event);
                 }
-            } else {
+            } else if (hasCooledDown()) {
                 if (Configuration.rollPublicResponse()) {
-                    response = this.base.respondPublic(event);
+                    response = base.respondPublic(event);
                 }
             }
         }
 
         if (response != null) {
-            String senderNick = event.getUser().getNick();
+            handleMessage();
 
-            this.handleMessage();
-            String lowerResponse = response.toLowerCase();
-            String message = event.getMessage().toLowerCase();
-
-            String could = senderNick.toLowerCase();
-
-            if (message.contains(event.getBot().getNick().toLowerCase()) && !lowerResponse.contains(could)) {
+            // If the sender mentioned us but isn't mentioned yet, make sure we do
+            final String senderNick = event.getUser().getNick();
+            if (botMentioned && !StringUtils.containsIgnoreCase(response, senderNick)) {
                 response = senderNick + ": " + response;
             }
         }
@@ -71,10 +68,10 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
 
     @Override
     public String respondPrivate(PrivateMessageEvent<Network> event) {
-        if (this.hasCooledDown()) {
-            String response = this.base.respondPrivate(event);
+        if (hasCooledDown()) {
+            String response = base.respondPrivate(event);
             if (response != null) {
-                this.handleMessage();
+                handleMessage();
             }
             return response;
         }
@@ -88,7 +85,7 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
      * @return true if we've waited long enough.
      */
     private boolean hasCooledDown() {
-        return (System.currentTimeMillis() - this.lastMessage) > Configuration.getCooldown() * 1000;
+        return (System.currentTimeMillis() - lastMessage) > Configuration.getCooldown() * 1000;
     }
 
     /**
@@ -96,7 +93,7 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
      */
     private void handleMessage() {
         Configuration.simulateDelay();
-        this.lastMessage = System.currentTimeMillis();
+        lastMessage = System.currentTimeMillis();
     }
 
 }

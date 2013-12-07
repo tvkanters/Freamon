@@ -100,7 +100,7 @@ public abstract class Configuration
   /** Current public response chance in percent. */
   private static int    pubResponseChance   = 10;
   /** Current pinged response chance in percent. */
-  private static int    pingResponseChance  = 90;
+  private static int    pingResponseChance  = 100;
   /** Current greeting chance in percent. */
   private static int    greetChance         = 80;
   
