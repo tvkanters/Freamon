@@ -150,8 +150,9 @@ not the user succesfully authenticated with him.
 
 The commands available after authentication are:
 
-  - `!lurk <channelname>`: Join a channel but don't talk in it.
   - `!join <channelname>`: Join a channel and talk in it.
+  - `!lurk <channelname>`: Join a channel but don't talk in it.
+  - `!polite <channelname>`: Join a channel but only speak when spoken to.
   - `!part <channelname>`: Leave a channel.
   - `!networkadd <host>`: Join another network, just like the command line parameter `-s`.
   - `!networkdel <host>`: Disconnect from *another* network.
