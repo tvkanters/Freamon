@@ -315,12 +315,17 @@ public class IRCClient extends ListenerAdapter<Network> {
                 l.debug(channel.getName() + " currently has a live stream. Not responding.");
 
             } else {
-                String message = this.responder.respondPublic(event);
-                if (message != null) {
-                    l.debug("Responding in " + channel.getName() + " with: " + message);
-                    target.sendMessage(channel, message);
-                } else {
-                    l.debug("Message was null.");
+                try {
+                    String message = this.responder.respondPublic(event);
+                    if (message != null) {
+                        l.debug("Responding in " + channel.getName() + " with: " + message);
+                        target.sendMessage(channel, message);
+                    } else {
+                        l.debug("Message was null.");
+                    }
+                } catch(final Exception ex) {
+                    // Manually catch exceptions as pircbotx ignores them all
+                    l.warn("Exception while responding", ex);
                 }
             }
         } else {
