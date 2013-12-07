@@ -320,6 +320,16 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
       }
     };
     
+    CommandHandler politeHandler = new JoinCommandHandler()
+    {
+      @Override
+      public String joinChannel(Network network, String channel)
+      {
+        network.addPoliteChannel(channel);
+        return "Joined as a polite user.";
+      }
+    };
+    
     CommandHandler partHandler = new ChannelCommandHandler()
     {
       @Override
@@ -563,6 +573,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     this.handlers.put("!nick", nickChangeHandler);
     this.handlers.put("!join", activeJoinHandler);
     this.handlers.put("!lurk", lurkHandler);
+    this.handlers.put("!polite", politeHandler);
     this.handlers.put("!networkadd", networkAdditionHandler);
     this.handlers.put("!networkdel", networkRemovalHandler);
     this.handlers.put("!quit", quitHandler);

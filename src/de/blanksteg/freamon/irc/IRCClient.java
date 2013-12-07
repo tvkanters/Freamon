@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import org.pircbotx.Channel;
@@ -337,7 +338,9 @@ public class IRCClient extends ListenerAdapter<Network>
     l.trace("Got a public message in " + event.getChannel().getName());
     Network target = event.getBot();
     Channel channel = event.getChannel();
-    if (target.isActiveChannel(channel))
+    final boolean botMentioned = StringUtils.containsIgnoreCase(event.getMessage(), target.getNick());
+    
+    if (target.isActiveChannel(channel) || (botMentioned && target.isPoliteChannel(channel)))
     {
       String message = this.responder.respondPublic(event);
       if (message != null)

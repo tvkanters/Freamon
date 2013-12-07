@@ -46,6 +46,8 @@ public class Network extends PircBotX {
     private final Set<String> activeChannels = new HashSet<String>();
     /** Set of channels we are currently lurking in. */
     private final Set<String> passiveChannels = new HashSet<String>();
+    /** Set of channels we are currently only speak when spoken to. */
+    private final Set<String> politeChannels = new HashSet<String>();
     /** Set of people/channels to ignore. */
     private final Set<String> ignore = new HashSet<String>();
 
@@ -210,6 +212,38 @@ public class Network extends PircBotX {
     }
 
     /**
+     * Adds a channel to only speak when spoken to in to this network. If the channel is already joined either actively,
+     * passively or politely, this request is ignored. If we are already connected the channel is entered immediately,
+     * otherwise it will be remembered for when we do connect.
+     * 
+     * @param channelName
+     *            The channel's name.
+     * @return Whether or not the channel was added to the set of passive channels.
+     * @throws IllegalArgumentException
+     *             If the channel name is null, shorter than two or does not match {@link Configuration#CHANNEL_MATCH}.
+     */
+    public synchronized boolean addPoliteChannel(String channelName) {
+        if (channelName == null) {
+            throw new IllegalArgumentException("Channel name was null.");
+        }
+        l.trace("Adding a polite channel to " + this.url + ": " + channelName);
+
+        if (this.channelKnown(channelName)) {
+            l.trace("Channel " + channelName + " was already known in " + this.url + ". Not adding.");
+            return false;
+        } else {
+            this.politeChannels.add(channelName);
+
+            if (this.isConnected()) {
+                l.trace("We're connected to " + this.url + " so we'll join the new channel " + channelName);
+                this.joinChannel(channelName);
+            }
+
+            return true;
+        }
+    }
+
+    /**
      * Removes a channel from the set of channels to be passive in. If we were never in that channel, nothing is done.
      * If we are connected to the network, the client parts from the channel with {@link Network#quitMessage} as the
      * reason.
@@ -241,7 +275,38 @@ public class Network extends PircBotX {
     }
 
     /**
-     * Connect to this network and join all previously known active and passive channel.
+     * Removes a channel from the set of channels to be polite in. If we were never in that channel, nothing is done. If
+     * we are connected to the network, the client parts from the channel with {@link Network#quitMessage} as the
+     * reason.
+     * 
+     * @param channelName
+     *            The name of the channel to remove.
+     * @return True iff the channel was removed.
+     * @throws IllegalArgumentException
+     *             If null is passed as the channel name.
+     */
+    public synchronized boolean removePoliteChannel(String channelName) {
+        if (channelName == null) {
+            throw new IllegalArgumentException("Channel name was null.");
+        }
+        l.trace("Removing a polite channel from " + this.url + ": " + channelName);
+
+        if (this.channelKnown(channelName)) {
+            this.politeChannels.remove(channelName);
+
+            if (this.isConnected()) {
+                l.trace("We were connected to " + this.url + ". Leaving channel: " + channelName);
+                this.leaveChannel(channelName);
+            }
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Connect to this network and join all previously known active, passive and polite channel.
      * 
      * @throws IOException
      * @throws IrcException
@@ -283,13 +348,18 @@ public class Network extends PircBotX {
             }
         }
 
+        for (String channel : this.activeChannels) {
+            l.info("Joining active channel on " + this.url + ": " + channel);
+            this.joinChannel(channel);
+        }
+
         for (String channel : this.passiveChannels) {
             l.info("Joining passive channel on " + this.url + ": " + channel);
             this.joinChannel(channel);
         }
 
-        for (String channel : this.activeChannels) {
-            l.info("Joining active channel on " + this.url + ": " + channel);
+        for (String channel : this.politeChannels) {
+            l.info("Joining polite channel on " + this.url + ": " + channel);
             this.joinChannel(channel);
         }
     }
@@ -327,13 +397,47 @@ public class Network extends PircBotX {
         }
 
         l.info("Becoming a lurker on " + this.url + " in channel " + channelName + ".");
-        if (this.activeChannels.contains(channelName)) {
+        if (this.activeChannels.contains(channelName) || this.politeChannels.contains(channelName)) {
             this.activeChannels.remove(channelName);
+            this.politeChannels.remove(channelName);
             this.passiveChannels.add(channelName);
             l.debug("Became a lurker on " + this.url + " in " + channelName);
             return true;
         } else {
-            l.debug("We were not active in the channel on " + this.url + ": " + channelName);
+            l.debug("We were not active or polite in the channel on " + this.url + ": " + channelName);
+            return false;
+        }
+    }
+
+    /**
+     * Become polite in the given channel. It's illegal to become polite in a channel not even joined.
+     * 
+     * @param channelName
+     *            The channel to become polite in.
+     * @return Whether or not we switched to be polite.
+     * @throws IllegalArgumentException
+     *             If the given channel name is null.
+     * @throws UnsupportedOperationException
+     *             If we are not even in the given channel.
+     */
+    public synchronized boolean switchToPolite(String channelName) {
+        if (channelName == null) {
+            throw new IllegalArgumentException("Given channel name was null or empty.");
+        }
+
+        if (!this.channelKnown(channelName)) {
+            throw new UnsupportedOperationException("You can't join channels using this method.");
+        }
+
+        l.info("Becoming a polite on " + this.url + " in channel " + channelName + ".");
+        if (this.activeChannels.contains(channelName) || this.passiveChannels.contains(channelName)) {
+            this.activeChannels.remove(channelName);
+            this.passiveChannels.remove(channelName);
+            this.politeChannels.add(channelName);
+            l.debug("Became a polite on " + this.url + " in " + channelName);
+            return true;
+        } else {
+            l.debug("We were not active or passive in the channel on " + this.url + ": " + channelName);
             return false;
         }
     }
@@ -359,13 +463,14 @@ public class Network extends PircBotX {
         }
 
         l.info("Becoming active on " + this.url + " in channel " + channel + ".");
-        if (this.passiveChannels.contains(channel)) {
+        if (this.passiveChannels.contains(channel) || this.politeChannels.contains(channel)) {
             this.passiveChannels.remove(channel);
+            this.politeChannels.remove(channel);
             this.activeChannels.add(channel);
             l.debug("Became active on " + this.url + " in channel " + channel + ".");
             return true;
         } else {
-            l.debug("We were not lurking in the channel on " + this.url + ": " + channel);
+            l.debug("We were not lurking or polite in the channel on " + this.url + ": " + channel);
             return false;
         }
     }
@@ -375,7 +480,7 @@ public class Network extends PircBotX {
      * 
      * @param channelName
      *            The channel to check.
-     * @return True iff the channel is an active one.
+     * @return True if the channel is an active one.
      * @throws IllegalArgumentException
      *             If the channel name is null.
      */
@@ -392,7 +497,7 @@ public class Network extends PircBotX {
      * 
      * @param channel
      *            The channel to check.
-     * @return True iff the channel is an active one.
+     * @return True if the channel is an active one.
      * @throws IllegalArgumentException
      *             If the channel is null.
      */
@@ -409,7 +514,7 @@ public class Network extends PircBotX {
      * 
      * @param channelName
      *            The channel to check.
-     * @return True iff the channel is a passive one.
+     * @return True if the channel is a passive one.
      * @throws IllegalArgumentException
      *             If the channel name is null.
      */
@@ -422,11 +527,28 @@ public class Network extends PircBotX {
     }
 
     /**
+     * Return whether or not the given channel is one to be polite in.
+     * 
+     * @param channelName
+     *            The channel to check.
+     * @return True if the channel is a passive one.
+     * @throws IllegalArgumentException
+     *             If the channel name is null.
+     */
+    public synchronized boolean isPoliteChannel(String channelName) {
+        if (channelName == null) {
+            throw new IllegalArgumentException("Given channel name was null or empty.");
+        }
+
+        return this.politeChannels.contains(channelName);
+    }
+
+    /**
      * Return whether or not the given {@link Channel} is one to be passive in.
      * 
      * @param channel
      *            The channel to check.
-     * @return True iff the channel is a passive one.
+     * @return True if the channel is a passive one.
      * @throws IllegalArgumentException
      *             If the channel is null.
      */
@@ -439,8 +561,25 @@ public class Network extends PircBotX {
     }
 
     /**
-     * Leave the channel by the given name regardless of whether we're active or passive in it. The channel is removed
-     * from its respective set.
+     * Return whether or not the given {@link Channel} is one to be polite in.
+     * 
+     * @param channel
+     *            The channel to check.
+     * @return True if the channel is a polite one.
+     * @throws IllegalArgumentException
+     *             If the channel is null.
+     */
+    public synchronized boolean isPoliteChannel(Channel channel) {
+        if (channel == null) {
+            throw new IllegalArgumentException("Channel was null.");
+        }
+
+        return this.isPoliteChannel(channel.getName());
+    }
+
+    /**
+     * Leave the channel by the given name regardless of whether we're active, passive or polite in it. The channel is
+     * removed from its respective set.
      * 
      * @param channel
      *            The channel to leave.
@@ -466,6 +605,10 @@ public class Network extends PircBotX {
         if (this.isPassiveChannel(channel)) {
             this.removePassiveChannel(channel);
         }
+
+        if (this.isPoliteChannel(channel)) {
+            this.removePoliteChannel(channel);
+        }
     }
 
     /**
@@ -482,11 +625,11 @@ public class Network extends PircBotX {
     }
 
     /**
-     * Return whether or not the given channel is known as either an active or passive channel.
+     * Return whether or not the given channel is known as either an active, passive or passive channel.
      * 
      * @param channelName
      *            The channel to check.
-     * @return True iff the channel is considered active or passive.
+     * @return True if the channel is considered active, passive or polite.
      * @throws IllegalArgumentException
      *             If the given channel is null.
      */
@@ -495,7 +638,8 @@ public class Network extends PircBotX {
             throw new IllegalArgumentException("The given channel name is null.");
         }
 
-        return this.passiveChannels.contains(channelName) || this.activeChannels.contains(channelName);
+        return this.passiveChannels.contains(channelName) || this.activeChannels.contains(channelName)
+                || this.politeChannels.contains(channelName);
     }
 
     /**

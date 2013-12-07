@@ -40,16 +40,14 @@ public class GenericAnthroResponseGenerator implements ResponseGenerator {
 
         String response = null;
 
-        if (target.isActiveChannel(event.getChannel().getName())) {
-            // When we're mentioned, ignore the cooldown
-            if (botMentioned) {
-                if (Configuration.rollPingResponse()) {
-                    response = base.respondPublic(event);
-                }
-            } else if (hasCooledDown()) {
-                if (Configuration.rollPublicResponse()) {
-                    response = base.respondPublic(event);
-                }
+        // When we're mentioned, ignore the cooldown
+        if (botMentioned) {
+            if (Configuration.rollPingResponse()) {
+                response = base.respondPublic(event);
+            }
+        } else if (hasCooledDown()) {
+            if (Configuration.rollPublicResponse()) {
+                response = base.respondPublic(event);
             }
         }
 
