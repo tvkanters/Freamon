@@ -480,7 +480,7 @@ public class Network extends PircBotX {
      * 
      * @param channelName
      *            The channel to check.
-     * @return True if the channel is an active one.
+     * @return True iff the channel is an active one.
      * @throws IllegalArgumentException
      *             If the channel name is null.
      */
@@ -497,7 +497,7 @@ public class Network extends PircBotX {
      * 
      * @param channel
      *            The channel to check.
-     * @return True if the channel is an active one.
+     * @return True iff the channel is an active one.
      * @throws IllegalArgumentException
      *             If the channel is null.
      */
@@ -514,7 +514,7 @@ public class Network extends PircBotX {
      * 
      * @param channelName
      *            The channel to check.
-     * @return True if the channel is a passive one.
+     * @return True iff the channel is a passive one.
      * @throws IllegalArgumentException
      *             If the channel name is null.
      */
@@ -531,7 +531,7 @@ public class Network extends PircBotX {
      * 
      * @param channelName
      *            The channel to check.
-     * @return True if the channel is a passive one.
+     * @return True iff the channel is a passive one.
      * @throws IllegalArgumentException
      *             If the channel name is null.
      */
@@ -548,7 +548,7 @@ public class Network extends PircBotX {
      * 
      * @param channel
      *            The channel to check.
-     * @return True if the channel is a passive one.
+     * @return True iff the channel is a passive one.
      * @throws IllegalArgumentException
      *             If the channel is null.
      */
@@ -565,7 +565,7 @@ public class Network extends PircBotX {
      * 
      * @param channel
      *            The channel to check.
-     * @return True if the channel is a polite one.
+     * @return True iff the channel is a polite one.
      * @throws IllegalArgumentException
      *             If the channel is null.
      */
@@ -629,7 +629,7 @@ public class Network extends PircBotX {
      * 
      * @param channelName
      *            The channel to check.
-     * @return True if the channel is considered active, passive or polite.
+     * @return True iff the channel is considered active, passive or polite.
      * @throws IllegalArgumentException
      *             If the given channel is null.
      */
