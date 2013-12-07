@@ -528,7 +528,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
 
         while (people.hasNext() && talkers.size() != contained.size()) {
             String currentPerson = people.next();
-            if (message.startsWith(currentPerson) || message.contains(" " + currentPerson)) {
+            if (message.matches(currentPerson + "\\W.*") || message.matches(".*\\W" + currentPerson + "\\W.*")) {
                 l.trace("Found person to replace: " + currentPerson);
                 contained.add(currentPerson);
             }
