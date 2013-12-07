@@ -305,14 +305,23 @@ public class IRCClient extends ListenerAdapter<Network> {
         Network target = event.getBot();
         Channel channel = event.getChannel();
         final boolean botMentioned = StringUtils.containsIgnoreCase(event.getMessage(), target.getNick());
+        final boolean isPolite = target.isPoliteChannel(channel);
 
-        if (target.isActiveChannel(channel) || (botMentioned && target.isPoliteChannel(channel))) {
-            String message = this.responder.respondPublic(event);
-            if (message != null) {
-                l.debug("Responding in " + channel.getName() + " with: " + message);
-                target.sendMessage(channel, message);
+        // We may chat if we're in an active channel or when we're polite and mentioned
+        if (target.isActiveChannel(channel) || (botMentioned && isPolite)) {
+
+            // Though when we're polite and someone is streaming, don't reply
+            if (isPolite && isStreamLive(channel)) {
+                l.debug(channel.getName() + " currently has a live stream. Not responding.");
+
             } else {
-                l.debug("Message was null.");
+                String message = this.responder.respondPublic(event);
+                if (message != null) {
+                    l.debug("Responding in " + channel.getName() + " with: " + message);
+                    target.sendMessage(channel, message);
+                } else {
+                    l.debug("Message was null.");
+                }
             }
         } else {
             l.debug(channel.getName() + " is not an active channel. Not responding.");
@@ -367,5 +376,18 @@ public class IRCClient extends ListenerAdapter<Network> {
             reconnector.setDaemon(true);
             reconnector.start();
         }
+    }
+
+    /**
+     * Checks if a stream is currently playing in the channel based on the topic. This method supports dopelives.com
+     * topic formats only.
+     * 
+     * @param channel
+     *            The channel to check for
+     * 
+     * @return True if a stream is playing, false otherwise
+     */
+    private boolean isStreamLive(final Channel channel) {
+        return channel.getTopic().matches("\\s*Streamer:\\s*[^\\s|].*");
     }
 }
