@@ -92,7 +92,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
     private static final int MAX_REPLACEMENT_TRIES = 10;
 
     static {
-        // Fill the character replacements for accidental 
+        // Fill the character replacements for accidental
         charReplacements.put('a', new Character[] { 'e' });
         charReplacements.put('b', new Character[] { 'd', 'p' });
         charReplacements.put('c', new Character[] { 'q', 'k' });
@@ -242,7 +242,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
      *            The message itself.
      */
     private void handleMessage(String us, String conversation, String sender, String message) {
-        l.trace("Handling an incomving message in the conversation " + conversation + " from " + sender + ".");
+        l.trace("Handling an incoming message in the conversation " + conversation + " from " + sender + ".");
         l.trace("The message is: " + message);
         this.addPeopleName(sender);
         this.addSentence(message);
@@ -250,6 +250,15 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
         ConversationState state = this.ensureConversationState(conversation);
         message = MessageSanitizer.filterMessage(message);
         List<Word> words = this.analyzer.analyzePhrase(message);
+
+        // Remove our name as a relevant word
+        for (int i = 0; i < words.size(); ++i) {
+            if (StringUtils.equalsIgnoreCase(words.get(i).getWord(), us)) {
+                words.remove(i);
+                --i;
+            }
+        }
+
         this.retainWords(state, words);
 
         if (!sender.equals(us)) {
@@ -394,8 +403,8 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
 
     /**
      * Generates a response relevant to the private conversation with the person that caused the
-     * {@link PrivateMessageEvent}. The triggers for receiving a message are called to ensure an up-to-date
-     * conversation state.
+     * {@link PrivateMessageEvent}. The triggers for receiving a message are called to ensure an up-to-date conversation
+     * state.
      * 
      * @param event
      *            The event caused by the message.
