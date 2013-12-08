@@ -286,10 +286,10 @@ public class IRCClient extends ListenerAdapter<Network> {
         }
 
         l.trace("Got a join event: " + event);
-        if (this.greeter.shouldGreet(event)) {
+        Channel channel = event.getChannel();
+        if (this.greeter.shouldGreet(event) && !isTired(channel)) {
             l.debug("Greeter gave the go-ahead on greeting. Generating a greeting now.");
             Network target = event.getBot();
-            Channel channel = event.getChannel();
             String greeting = this.greeter.generateGreeting(event);
             l.debug("Sending greeting in " + channel.getName() + ": " + greeting);
             target.sendMessage(channel, greeting);
@@ -297,46 +297,70 @@ public class IRCClient extends ListenerAdapter<Network> {
     }
 
     public synchronized void onMessage(MessageEvent<Network> event) {
-        if (event == null) {
-            return;
-        }
+        if (event == null) return;
 
-        if (event.getBot().isIgnored(event.getUser().getNick())) {
-            return;
-        }
-
-        l.trace("Got a public message in " + event.getChannel().getName());
-        Network target = event.getBot();
-        Channel channel = event.getChannel();
+        final Network target = event.getBot();
+        final Channel channel = event.getChannel();
+        final String senderNick = event.getUser().getNick();
         final boolean botMentioned = StringUtils.containsIgnoreCase(event.getMessage(), target.getNick());
-        final boolean isPolite = target.isPoliteChannel(channel);
+        boolean politeBlock = false;
+        boolean wasTired = false;
 
-        // We may chat if we're in an active channel or when we're polite and mentioned
-        if (!target.isActiveChannel(channel) && !(botMentioned && isPolite)) {
+        l.trace("Got a public message in " + channel.getName());
+
+        if (target.isIgnored(senderNick)) {
+            l.debug("Ignoring user " + senderNick);
+            return;
+        }
+
+        // We may only respond if we're in an active or polite channel
+        if (target.isPassiveChannel(channel)) {
             l.debug(channel.getName() + " is not an active channel. Not responding.");
             return;
         }
 
-        // When we're polite and someone is streaming, don't reply
-        if (isPolite && isStreamLive(channel)) {
-            l.debug(channel.getName() + " currently has a live stream. Not responding.");
-            return;
+        if (target.isPoliteChannel(channel)) {
+            if (!botMentioned) {
+                // When we're polite we should be mentioned to reply
+                politeBlock = true;
+                l.debug(channel.getName() + " is not a polite channel but we're not mentioned.");
+
+            } else if (isStreamLive(channel)) {
+                // When we're polite and someone is streaming, don't reply
+                politeBlock = true;
+                l.debug(channel.getName() + " currently has a live stream.");
+            }
         }
 
-        // When we're tired of a channel, don't reply
         if (isTired(channel)) {
-            l.debug(channel.getName() + " is currently tiring me. Not responding.");
+            // When we're tired of a channel, we don't reply but can be woken up
+            wasTired = true;
+            l.debug(channel.getName() + " is currently tiring me.");
+        }
+
+        // When the event is a command, we might not cancel responding
+        if ((politeBlock || wasTired) && !event.getMessage().startsWith("!")) {
             return;
         }
 
         try {
-            String message = this.responder.respondPublic(event);
-            if (message != null) {
-                l.debug("Responding in " + channel.getName() + " with: " + message);
-                target.sendMessage(channel, message);
-            } else {
-                l.debug("Message was null.");
+            final String message = this.responder.respondPublic(event);
+
+            // When we were and still are tired of a channel, don't reply
+            if (wasTired && isTired(channel)) {
+                l.debug(channel.getName() + " is currently tiring me. Not responding.");
+                return;
             }
+
+            // Check if a reply was given
+            if (message == null) {
+                l.debug("Message was null.");
+                return;
+            }
+
+            l.debug("Responding in " + channel.getName() + " with: " + message);
+            target.sendMessage(channel, message);
+
         } catch (final Exception ex) {
             // Manually catch exceptions as pircbotx ignores them all
             l.warn("Exception while responding", ex);

@@ -547,7 +547,20 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler untireHandler = new PriviledgedCommandHandler() {
+        PublicCommandHandler untireHandler = new OpsCommandHandler() {
+            @Override
+            public String handleOpsCommand(MessageEvent<Network> event) {
+                client.becomeTired(event.getChannel(), -1);
+                return ":D";
+            }
+
+            @Override
+            public String handleNonOpsCommand(MessageEvent<Network> event) {
+                return null;
+            }
+        };
+
+        PrivateCommandHandler privateUntireHandler = new PriviledgedCommandHandler() {
             @Override
             public String handleAuthedCommand(PrivateMessageEvent<Network> event, String param) {
                 client.becomeTired(param, -1);
@@ -571,9 +584,10 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
         this.privateHandlers.put("!mindelay", minDelay);
         this.privateHandlers.put("!maxdelay", maxDelay);
         this.privateHandlers.put("!brainswitch", brainSwitch);
-        this.privateHandlers.put("!plscome", untireHandler);
+        this.privateHandlers.put("!plscome", privateUntireHandler);
 
         this.publicHandlers.put("!plsgo", tireHandler);
+        this.publicHandlers.put("!plscome", untireHandler);
     }
 
     @Override
