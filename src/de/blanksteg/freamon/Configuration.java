@@ -95,7 +95,9 @@ public abstract class Configuration
   /** Current maximum response delay in ms. */
   private static int    maxDelay            = 4000;
   /** Current cooldown period in seconds. */
-  private static long   cooldown            =    5;
+  private static long   cooldown            = 5;
+  /** Current tire period in seconds. */
+  private static long   tirePeriod          = 15 * 60;
   
   /** Current public response chance in percent. */
   private static int    pubResponseChance   = 10;
@@ -142,6 +144,21 @@ public abstract class Configuration
       catch (Exception e)
       {
         System.err.println("Malformed cooldown value: " + base.getOptionValue("cd"));
+        return false;
+      }
+    }
+    
+    if (base.hasOption("tp"))
+    {
+      try
+      {
+        long tirePeriodOpt = Long.parseLong(base.getOptionValue("tp"));
+        tirePeriod = tirePeriodOpt;
+        l.info("Set tire period to " + tirePeriod);
+      }
+      catch (Exception e)
+      {
+        System.err.println("Malformed tire period value: " + base.getOptionValue("tp"));
         return false;
       }
     }
@@ -299,6 +316,21 @@ public abstract class Configuration
       catch (Exception e)
       {
         System.err.println("Malformed cooldown value: " + base.get("cd"));
+        return false;
+      }
+    }
+    
+    if (base.containsKey("tireperiod"))
+    {
+      try
+      {
+        long tirePeriodOpt = base.getLong("tireperiod");
+        tirePeriod = tirePeriodOpt;
+        l.info("Set tire period to " + tirePeriod);
+      }
+      catch (Exception e)
+      {
+        System.err.println("Malformed tire period value: " + base.get("tp"));
         return false;
       }
     }
@@ -580,6 +612,16 @@ public abstract class Configuration
   public static void setCooldown(long cooldown)
   {
     Configuration.cooldown = cooldown;
+  }
+  
+  public static long getTirePeriod()
+  {
+    return tirePeriod;
+  }
+  
+  public static void setTirePeriod(long tirePeriod)
+  {
+    Configuration.tirePeriod = tirePeriod;
   }
   
   public static int getPubResponseChance()

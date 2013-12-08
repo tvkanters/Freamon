@@ -22,6 +22,8 @@ import org.pircbotx.hooks.events.PingEvent;
 import org.pircbotx.hooks.events.PrivateMessageEvent;
 import org.pircbotx.hooks.managers.ListenerManager;
 
+import de.blanksteg.freamon.Configuration;
+
 /**
  * The IRCClient class offers semi-advanced functionality to manage connections to multiple IRC networks in which
  * multiple channels can be joined either as an active or passive member. When a channel is joined or another user joins
@@ -46,6 +48,8 @@ public class IRCClient extends ListenerAdapter<Network> {
     private final Map<String, Network> networks = new HashMap<String, Network>();
     /** List of listeners that want to listen on any network managed by this client. */
     private List<Listener<Network>> subscribers = new LinkedList<Listener<Network>>();
+    /** List of listeners that want to listen on any network managed by this client. */
+    private Map<String, Long> tiredChannels = new HashMap<String, Long>();
 
     /** Whether or not we are currently connected to the networks. */
     private boolean connected;
@@ -308,28 +312,34 @@ public class IRCClient extends ListenerAdapter<Network> {
         final boolean isPolite = target.isPoliteChannel(channel);
 
         // We may chat if we're in an active channel or when we're polite and mentioned
-        if (target.isActiveChannel(channel) || (botMentioned && isPolite)) {
-
-            // Though when we're polite and someone is streaming, don't reply
-            if (isPolite && isStreamLive(channel)) {
-                l.debug(channel.getName() + " currently has a live stream. Not responding.");
-
-            } else {
-                try {
-                    String message = this.responder.respondPublic(event);
-                    if (message != null) {
-                        l.debug("Responding in " + channel.getName() + " with: " + message);
-                        target.sendMessage(channel, message);
-                    } else {
-                        l.debug("Message was null.");
-                    }
-                } catch(final Exception ex) {
-                    // Manually catch exceptions as pircbotx ignores them all
-                    l.warn("Exception while responding", ex);
-                }
-            }
-        } else {
+        if (!target.isActiveChannel(channel) && !(botMentioned && isPolite)) {
             l.debug(channel.getName() + " is not an active channel. Not responding.");
+            return;
+        }
+
+        // When we're polite and someone is streaming, don't reply
+        if (isPolite && isStreamLive(channel)) {
+            l.debug(channel.getName() + " currently has a live stream. Not responding.");
+            return;
+        }
+
+        // When we're tired of a channel, don't reply
+        if (isTired(channel)) {
+            l.debug(channel.getName() + " is currently tiring me. Not responding.");
+            return;
+        }
+
+        try {
+            String message = this.responder.respondPublic(event);
+            if (message != null) {
+                l.debug("Responding in " + channel.getName() + " with: " + message);
+                target.sendMessage(channel, message);
+            } else {
+                l.debug("Message was null.");
+            }
+        } catch (final Exception ex) {
+            // Manually catch exceptions as pircbotx ignores them all
+            l.warn("Exception while responding", ex);
         }
     }
 
@@ -394,5 +404,82 @@ public class IRCClient extends ListenerAdapter<Network> {
      */
     private boolean isStreamLive(final Channel channel) {
         return channel.getTopic().matches("\\s*Streamer:\\s*[^\\s|].*");
+    }
+
+    /**
+     * Become tired of a channel so that we won't talk in it for a while.
+     * 
+     * @param channel
+     *            The channel to become tired of
+     */
+    public void becomeTired(final Channel channel) {
+        becomeTired(channel.getName());
+    }
+
+    /**
+     * Become tired of a channel so that we won't talk in it for a while.
+     * 
+     * @param channel
+     *            The channel to become tired of
+     */
+    public void becomeTired(final String channel) {
+        becomeTired(channel, Configuration.getTirePeriod());
+    }
+
+    /**
+     * Become tired of a channel so that we won't talk in it for a while.
+     * 
+     * @param channel
+     *            The channel to become tired of
+     * @param tirePeriod
+     *            How long we should become tired of a channel in seconds
+     */
+    public void becomeTired(final Channel channel, final long tirePeriod) {
+        becomeTired(channel.getName(), tirePeriod);
+    }
+
+    /**
+     * Become tired of a channel so that we won't talk in it for a while.
+     * 
+     * @param channel
+     *            The channel to become tired of
+     * @param tirePeriod
+     *            How long we should become tired of a channel in seconds
+     */
+    public void becomeTired(final String channel, final long tirePeriod) {
+        tiredChannels.put(channel, System.currentTimeMillis() + tirePeriod * 1000);
+    }
+
+    /**
+     * Checks if we're currently tired of talking in a channel and shouldn't do so.
+     * 
+     * @param channel
+     *            The channel to check tire for
+     * 
+     * @return True iff we shouldn't talk in the given channel
+     */
+    public boolean isTired(final Channel channel) {
+        return isTired(channel.getName());
+    }
+
+    /**
+     * Checks if we're currently tired of talking in a channel and shouldn't do so.
+     * 
+     * @param channel
+     *            The channel to check tire for
+     * 
+     * @return True iff we shouldn't talk in the given channel
+     */
+    public boolean isTired(final String channel) {
+        final Long tireLimit = tiredChannels.get(channel);
+        if (tireLimit != null) {
+            if (tireLimit > System.currentTimeMillis()) {
+                return true;
+            } else {
+                tiredChannels.remove(channel);
+            }
+        }
+
+        return false;
     }
 }

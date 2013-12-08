@@ -92,7 +92,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
     private static final int MAX_REPLACEMENT_TRIES = 10;
 
     static {
-        // Fill the character replacements for accidental
+        // Fill the character replacements for accidental highlight prevention
         charReplacements.put('a', new Character[] { 'e' });
         charReplacements.put('b', new Character[] { 'd', 'p' });
         charReplacements.put('c', new Character[] { 'q', 'k' });
