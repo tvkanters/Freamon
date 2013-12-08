@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
@@ -528,7 +527,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
 
         while (people.hasNext() && talkers.size() != contained.size()) {
             String currentPerson = people.next();
-            if (message.matches(currentPerson + "\\W.*") || message.matches(".*\\W" + currentPerson + "\\W.*")) {
+            if (message.matches("(?i)(^|.*\\W)" + currentPerson + "(\\W.*|$)")) {
                 l.trace("Found person to replace: " + currentPerson);
                 contained.add(currentPerson);
             }
@@ -558,7 +557,6 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
      * @return The message with accidental highlights replace
      */
     private String preventHighlighting(String message, final MessageEvent<Network> event) {
-        final Random rand = new Random();
         final String botNickLower = event.getBot().getNick().toLowerCase();
         final String senderNickLower = event.getUser().getNick().toLowerCase();
         String messageLower = message.toLowerCase();
@@ -582,19 +580,19 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
                 String newNick = message.substring(nickIndex, nickIndex + nick.length());
 
                 // Decide which char to replace
-                final int pos = rand.nextInt(newNick.length());
+                final int pos = Configuration.RNG.nextInt(newNick.length());
                 final Character selectedChar = newNick.charAt(pos);
                 Character replacementChar = null;
 
                 if (Character.isDigit(selectedChar)) {
                     // Digits can just receive another number
-                    replacementChar = Integer.toString(rand.nextInt(10)).charAt(0);
+                    replacementChar = Integer.toString(Configuration.RNG.nextInt(10)).charAt(0);
                 } else {
                     // Determine the replacement char based on its mapping
                     final Character[] replacements = charReplacements.get(Character.toLowerCase(selectedChar));
                     if (replacements != null) {
                         // Randomly pick a possible replacement and make it match the case
-                        replacementChar = replacements[rand.nextInt(replacements.length)];
+                        replacementChar = replacements[Configuration.RNG.nextInt(replacements.length)];
                         if (Character.isUpperCase(selectedChar)) {
                             replacementChar = Character.toUpperCase(replacementChar);
                         }
