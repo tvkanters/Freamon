@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.pircbotx.Colors;
 import org.pircbotx.User;
 import org.pircbotx.hooks.ListenerAdapter;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -568,6 +569,15 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
+        PublicCommandHandler wisdomHandler = new PublicCommandHandler() {
+            @Override
+            public String handleCommand(MessageEvent<Network> event) {
+                return Colors.BOLD
+                        + halResponder.respondPublic(new MessageEvent<Network>(event.getBot(), event.getChannel(),
+                                event.getUser(), "are"));
+            }
+        };
+
         this.privateHandlers.put("!auth", authHandler);
         this.privateHandlers.put("!nick", nickChangeHandler);
         this.privateHandlers.put("!join", activeJoinHandler);
@@ -588,6 +598,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         this.publicHandlers.put("!plsgo", tireHandler);
         this.publicHandlers.put("!plscome", untireHandler);
+        this.publicHandlers.put("!freamonwisdom", wisdomHandler);
     }
 
     @Override
@@ -638,10 +649,16 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      * 
      * @param id
      *            The auth ID of the user.
+     * 
+     * @return True iff the ID was present and is now removed
      */
-    private void deauth(String id) {
-        this.authed.remove(id);
-        l.debug("Deauthed user: " + id);
+    private boolean deauth(String id) {
+        if (authed.remove(id)) {
+            l.debug("Deauthed user: " + id);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -649,9 +666,10 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     public synchronized void onNickChange(NickChangeEvent<Network> event) {
         String id = this.getAuthID(event.getOldNick(), event.getBot());
-        l.info(event.getUser() + " changed from " + event.getOldNick() + " to " + event.getNewNick()
-                + ". Deauthing him.");
-        this.deauth(id);
+        if (deauth(id)) {
+            l.info(event.getUser() + " changed from " + event.getOldNick() + " to " + event.getNewNick()
+                    + ". Deauthing him.");
+        }
     }
 
     /**
@@ -659,8 +677,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     public synchronized void onQuit(QuitEvent<Network> event) {
         String id = this.getAuthID(event.getUser().getNick(), event.getBot());
-        l.info(id + " has quit. Deauthing him.");
-        this.deauth(id);
+        if (deauth(id)) {
+            l.info(id + " has quit. Deauthing him.");
+        }
     }
 
     /**
@@ -668,8 +687,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     public synchronized void onPart(PartEvent<Network> event) {
         String id = this.getAuthID(event.getUser().getNick(), event.getBot());
-        l.info(id + " has quit. Deauthing him.");
-        this.deauth(id);
+        if (deauth(id)) {
+            l.info(id + " has quit. Deauthing him.");
+        }
     }
 
     /**
