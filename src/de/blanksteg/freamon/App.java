@@ -3,6 +3,7 @@ package de.blanksteg.freamon;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -67,7 +68,8 @@ public class App {
 
     private static final int WRITEOUT_INTERVAL = 40;
 
-    public static void main(String[] args) throws IOException, IrcException, ParseException, ClassNotFoundException {
+    public static void main(String[] args) throws IOException, IrcException, ParseException, ClassNotFoundException,
+            SQLException, InterruptedException {
         Options options = getOptions();
         CommandLineParser parser = new GnuParser();
         CommandLine line = parser.parse(options, args);
@@ -109,7 +111,7 @@ public class App {
         formatter.setDescPadding(4);
         formatter.printHelp(120, "<jar>",
                 "\nWhere [...] indicates and optional parameter and -p or --paramter can be:\n", options,
-                "(c) Marc Müller", true);
+                "Marc Müller, Timon Kanters", true);
     }
 
     @SuppressWarnings("static-access")

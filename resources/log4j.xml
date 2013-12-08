@@ -67,4 +67,10 @@
     <appender-ref ref="fileAppender" />
     <appender-ref ref="consoleAppender" />
   </logger>
+  
+  <logger name="de.blanksteg.freamon.db" additivity="false">
+    <level value="TRACE" />
+    <appender-ref ref="fileAppender" />
+    <appender-ref ref="consoleAppender" />
+  </logger>
 </log4j:configuration>
