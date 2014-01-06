@@ -23,6 +23,7 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.xml.DOMConfigurator;
 import org.pircbotx.exception.IrcException;
 
+import de.blanksteg.freamon.db.FreamonH2Database;
 import de.blanksteg.freamon.hal.ContinuousTextTrainer;
 import de.blanksteg.freamon.hal.FileTrainer;
 import de.blanksteg.freamon.hal.FreamonHal;
@@ -66,7 +67,7 @@ public class App {
         TRAINER_FACTORIES.put("ctd", ContinuousTextTrainer.FACTORY);
     }
 
-    private static final int WRITEOUT_INTERVAL = 40;
+    private static final int WRITEOUT_INTERVAL = 100;
 
     public static void main(String[] args) throws IOException, IrcException, ParseException, ClassNotFoundException,
             SQLException, InterruptedException {
@@ -322,18 +323,20 @@ public class App {
         return null;
     }
 
-    private static void train(CommandLine args) throws IOException, ClassNotFoundException {
-        if (!args.hasOption("bf")) {
-            System.err.println("No brain file specified. Aborting.");
-            return;
-        }
-
+    private static void train(CommandLine args) throws IOException, ClassNotFoundException, SQLException {
         Collection<Trainer> trainers = gatherSupposedTrainers(args);
         l.debug("Gathered " + trainers.size() + " trainers.");
 
+        File brainFile = null;
+        FreamonHal hal;
+
         String brain = args.getOptionValue("bf");
-        File brainFile = new File(brain);
-        FreamonHal hal = new FreamonHal(brainFile);
+        if (brain != null) {
+            brainFile = new File(brain);
+            hal = new FreamonHal(brainFile);
+        } else {
+            hal = new FreamonHal(new FreamonH2Database("h2/default"));
+        }
         l.info("Starting training.");
         long start = System.currentTimeMillis();
 
@@ -345,20 +348,26 @@ public class App {
             if (trainCount % WRITEOUT_INTERVAL == 0) {
                 l.info("Flusing current hal instance.");
                 start = System.currentTimeMillis();
-                SerializedFreamonHalTools.write(brainFile, hal);
+
+                hal.save();
+
                 System.gc();
                 l.info("Wrote and read hal instance in " + ((System.currentTimeMillis() - start) / 1000) + "s.");
-                hal = SerializedFreamonHalTools.read(brainFile);
+
+                if (brainFile != null) {
+                    hal = SerializedFreamonHalTools.read(brainFile);
+                }
             }
         }
 
-        hal.trainAll(trainers);
         long end = System.currentTimeMillis();
         l.info("Done with training. It took " + ((end - start) / 1000) + " seconds.");
 
-        l.info("Writing the file to " + brain);
+        l.info("Saving HAL");
         start = System.currentTimeMillis();
-        SerializedFreamonHalTools.write(brainFile, hal);
+
+        hal.save();
+
         end = System.currentTimeMillis();
         l.info("Done writing the file. Writing took " + ((end - start) / 1000) + " seconds.");
     }
@@ -376,27 +385,31 @@ public class App {
             return;
         }
 
-        if (!line.hasOption("bf")) {
-            System.err.println("No brain file specified. Aborting.");
-            return;
-        }
-
-        String brain = line.getOptionValue("bf");
-        File brainFile = new File(brain);
-        if (!brainFile.exists() || !brainFile.canRead()) {
-            System.err
-                    .println("Brain file at " + brainFile + " does not exist or is otherwise not readable. Aborting.");
-            return;
-        }
-
         FreamonHal hal = null;
-        try {
-            l.debug("Reading brain file from " + brainFile);
-            hal = SerializedFreamonHalTools.read(brainFile);
-        } catch (ClassNotFoundException e1) {
-            System.err.println("Error while reading brain file: ");
-            e1.printStackTrace();
-            return;
+        String brain = line.getOptionValue("bf");
+        if (brain != null) {
+            File brainFile = new File(brain);
+            if (!brainFile.exists() || !brainFile.canRead()) {
+                System.err.println("Brain file at " + brainFile
+                        + " does not exist or is otherwise not readable. Aborting.");
+                return;
+            }
+
+            try {
+                l.debug("Reading brain file from " + brainFile);
+                hal = SerializedFreamonHalTools.read(brainFile);
+            } catch (ClassNotFoundException e1) {
+                System.err.println("Error while reading brain file: ");
+                e1.printStackTrace();
+                return;
+            }
+        } else {
+            try {
+                hal = new FreamonHal(new FreamonH2Database("h2/default"));
+            } catch (SQLException ex) {
+                l.error("Couldn't create database connection", ex);
+                return;
+            }
         }
 
         l.debug("Starting network configuration.");

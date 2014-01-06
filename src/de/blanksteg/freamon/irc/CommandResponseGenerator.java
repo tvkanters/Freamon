@@ -1,7 +1,6 @@
 package de.blanksteg.freamon.irc;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -427,9 +426,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
                     FreamonHal hal = halResponder.getFreamonHal();
                     l.trace("Attempting lock on the Freamon instance.");
                     synchronized (hal) {
-                        l.debug("Writing the brain to the disk at " + hal.getBaseFile() + ".");
-                        SerializedFreamonHalTools.writeThreaded(hal.getBaseFile(), hal);
-                        l.debug("Done writing the brain to " + hal.getBaseFile() + ".");
+                        hal.save();
                     }
                     return "Bye!";
                 } else {
@@ -513,11 +510,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
                 l.trace("Attempting lock on the Freamon instance.");
                 synchronized (hal) {
                     l.trace("Got lock on the Freamon instance.");
-                    try {
-                        SerializedFreamonHalTools.write(hal.getBaseFile(), hal);
-                    } catch (IOException e) {
-                        return "Error while writing previous brain: " + e.getMessage();
-                    }
+                    hal.save();
 
                     try {
                         newHal = SerializedFreamonHalTools.read(brain);

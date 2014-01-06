@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -16,9 +18,9 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
 
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.jibble.jmegahal.JMegaHal;
 import org.pircbotx.Channel;
 import org.pircbotx.User;
 import org.pircbotx.hooks.ListenerAdapter;
@@ -27,6 +29,7 @@ import org.pircbotx.hooks.events.PrivateMessageEvent;
 
 import de.blanksteg.freamon.Configuration;
 import de.blanksteg.freamon.MessageSanitizer;
+import de.blanksteg.freamon.db.Database;
 import de.blanksteg.freamon.irc.Network;
 import de.blanksteg.freamon.nlp.PhraseAnalyzer;
 import de.blanksteg.freamon.nlp.Word;
@@ -72,7 +75,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
     private static final String NICKNAME = "[a-zA-Z-\\_]+";
 
     /** The MegaHAL analyzing the received messages. */
-    private final JMegaHal hal;
+    private final Hal hal;
     /** Set of known people actually chatting. */
     private final Set<String> peopleNames = new HashSet<String>();
 
@@ -126,19 +129,42 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
      * @param newBaseFile
      *            The base file this instance was from.
      */
-    public FreamonHal(File newBaseFile) {
+    public FreamonHal(final Hal hal) {
+        this.hal = hal;
+        this.initialized = true;
+    }
+
+    /**
+     * Create a new instance that was loaded from the given file.
+     * 
+     * @param newBaseFile
+     *            The base file this instance was from.
+     */
+    public FreamonHal(final File newBaseFile) {
         this.hal = new JMegaHal();
         this.baseFile = newBaseFile;
         this.initialized = true;
     }
 
     /**
-     * Get the file this instance is based on.
+     * Create a new instance that was loaded from the given database.
      * 
-     * @return The base file.
+     * @param database
+     *            The database used to store the knowledge in.
      */
-    public File getBaseFile() {
-        return this.baseFile;
+    public FreamonHal(final Database database) {
+        this.hal = new H2MegaHal(database);
+        this.baseFile = null;
+        this.initialized = true;
+
+        try {
+            final ResultSet result = database.query("SELECT NAME FROM PEOPLENAMES");
+            while (result.next()) {
+                peopleNames.add(result.getString("NAME"));
+            }
+        } catch (SQLException ex) {
+            l.error("Couldn't load names", ex);
+        }
     }
 
     /**
@@ -168,6 +194,41 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
     }
 
     /**
+     * Saves this instance to either a brain file or database.
+     */
+    public void save() {
+        if (hasBrain()) {
+            // When we have a base file, save HAL by writing this object to it
+            l.debug("Writing the brain to the disk at " + baseFile + ".");
+            SerializedFreamonHalTools.writeThreaded(baseFile, this);
+            l.debug("Done writing the brain to " + baseFile + ".");
+        } else {
+            final Database db = hal.getDatabase();
+            for (final String name : peopleNames) {
+                final String nameEsc = StringEscapeUtils.escapeSql(name);
+                try {
+                    if (!db.query("SELECT * FROM PEOPLENAMES WHERE NAME='" + nameEsc + "'").first()) {
+                        db.insert("INSERT INTO PEOPLENAMES (NAME) VALUES ('" + nameEsc + "')");
+                    }
+                } catch (final SQLException ex) {
+                    l.error("Couldn't insert name", ex);
+                }
+            }
+
+            hal.save();
+        }
+    }
+
+    /**
+     * Checks whether or not this instance is using a brain file or a database.
+     * 
+     * @return True iff using a brain file
+     */
+    public boolean hasBrain() {
+        return baseFile != null;
+    }
+
+    /**
      * Let the underlying MegaHAL instance learn from the given sentence. Before training, the sentence is filtered via
      * {@link MessageSanitizer#filterMessage(String)}.
      * 
@@ -179,7 +240,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
 
         if (filtered != null && !MessageSanitizer.emptyString(filtered)) {
             long start = System.currentTimeMillis();
-            this.hal.add(filtered);
+            this.hal.addSentence(filtered);
             long time = System.currentTimeMillis() - start;
             l.trace("[" + time + "]: Learning a new sentence: " + filtered);
         } else {
@@ -283,7 +344,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
         }
 
         String sender = event.getUser().getNick();
-        l.trace("Got a private message from " + sender + ".");
+        l.trace("Got a private message from " + sender + ": " + message);
         this.handleMessage(event.getBot().getNick(), sender, sender, message);
     }
 
@@ -448,19 +509,6 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
         for (Word word : words) {
             conversation.addWord(word);
         }
-
-        // l.trace("Remembering words for the conversation " + conversation.getName() + ".");
-        // int bound = (int)(words.size() * 0.8) + 1;
-        // bound = bound > words.size() ? words.size() : bound;
-        // l.trace("Limiting the selection to " + bound + " words.");
-        // Iterator<Word> iter = words.iterator();
-        // for (; bound > 0; bound--)
-        // {
-        // assert iter.hasNext();
-        // Word word = iter.next();
-        // l.trace("Retaining: " + word);
-        // conversation.addPhrase(word);
-        // }
     }
 
     /**
