@@ -82,7 +82,7 @@ public class H2MegaHal implements Hal {
         boolean punctuation = false;
         StringBuffer buffer = new StringBuffer();
         for (int i = 0; i < chars.length; ++i) {
-            char ch = chars[i];
+            final char ch = chars[i];
 
             // Check if this character switches the token type
             if (WORD_PATTERN.matcher(new Character(ch).toString()).matches() == punctuation) {
@@ -104,9 +104,15 @@ public class H2MegaHal implements Hal {
         tokens.add(buffer.toString());
 
         // Store each quad of tokens in the DB
+        Quad prevQuad = null;
         for (int i = 0; i < tokens.size() - 3; ++i) {
-            Quad.put(mDatabase, tokens.get(i), tokens.get(i + 1), tokens.get(i + 2), tokens.get(i + 3), i == 0,
-                    i == tokens.size() - 4);
+            final Quad quad = Quad.put(mDatabase, tokens.get(i), tokens.get(i + 1), tokens.get(i + 2),
+                    tokens.get(i + 3), i == 0, i == tokens.size() - 4);
+
+            if (prevQuad != null) {
+                prevQuad.linkToRight(mDatabase, quad);
+            }
+            prevQuad = quad;
         }
     }
 
@@ -161,6 +167,7 @@ public class H2MegaHal implements Hal {
      * 
      * @return True iff the save action was successful
      */
+    @Override
     public boolean save() {
         return mDatabase.save();
     }

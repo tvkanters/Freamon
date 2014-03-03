@@ -46,5 +46,9 @@ public class FreamonH2Database extends H2Database {
         }
         quadTable += ", CANSTART BOOLEAN, CANEND BOOLEAN, UNIQUE(" + uniqueConstraint + ")" + keyConstraint + ")";
         update(quadTable);
+
+        // Add the table to connect quads
+        update("CREATE TABLE QUAD_LINKS (LEFT INT, RIGHT INT, PRIMARY KEY(LEFT, RIGHT), "
+                + "FOREIGN KEY(LEFT) REFERENCES QUADS(ID), FOREIGN KEY(RIGHT) REFERENCES QUADS(ID))");
     }
 }

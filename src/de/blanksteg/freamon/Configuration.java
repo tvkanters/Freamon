@@ -91,9 +91,9 @@ public abstract class Configuration
   public static final String DEFAULT_PASS   = null;
   
   /** Current minimum response delay in ms. */
-  private static int    minDelay            = 2000;
+  private static int    minDelay            = 500;
   /** Current maximum response delay in ms. */
-  private static int    maxDelay            = 4000;
+  private static int    maxDelay            = 2000;
   /** Current cooldown period in seconds. */
   private static long   cooldown            = 5;
   /** Current tire period in seconds. */
@@ -104,7 +104,7 @@ public abstract class Configuration
   /** Current pinged response chance in percent. */
   private static int    pingResponseChance  = 100;
   /** Current greeting chance in percent. */
-  private static int    greetChance         = 80;
+  private static int    greetChance         = 20;
   
   /** Whether or not to learn nicknames. */
   private static boolean learnNames = true;

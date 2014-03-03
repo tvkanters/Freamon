@@ -67,7 +67,7 @@ public class Quad {
                     quad.mCanEnd = true;
                     database.update("UPDATE QUADS SET CANEND=TRUE WHERE ID=" + quad.mId);
                 }
-            } catch (SQLException ex) {
+            } catch (final SQLException ex) {
                 l.error("Can't update quad", ex);
             }
             return quad;
@@ -84,7 +84,7 @@ public class Quad {
                                 + token1.getId() + ", " + token2.getId() + ", " + token3.getId() + ", "
                                 + token4.getId() + ", " + canStart + ", " + canEnd + ")");
                 return new Quad(database, id, token1, token2, token3, token4, canStart, canEnd);
-            } catch (SQLException ex) {
+            } catch (final SQLException ex) {
                 l.error("Can't insert quad", ex);
                 return null;
             }
@@ -136,7 +136,7 @@ public class Quad {
             return new Quad(database, r.getInt("ID"), r.getInt("TOKEN1"), r.getInt("TOKEN2"), r.getInt("TOKEN3"),
                     r.getInt("TOKEN4"), r.getBoolean("CANSTART"), r.getBoolean("CANEND"));
 
-        } catch (SQLException ex) {
+        } catch (final SQLException ex) {
             l.error("Couldn't fetch quad", ex);
             return null;
         }
@@ -184,7 +184,7 @@ public class Quad {
         }
 
         final int tokenId = token.getId();
-        String where = "SELECT * FROM QUADS WHERE TOKEN1=" + tokenId + " OR TOKEN2=" + tokenId + " OR TOKEN3="
+        final String where = "SELECT * FROM QUADS WHERE TOKEN1=" + tokenId + " OR TOKEN2=" + tokenId + " OR TOKEN3="
                 + tokenId + " OR TOKEN4=" + tokenId + " ORDER BY RAND() LIMIT 1";
         try {
             ResultSet r = database.query(where);
@@ -200,9 +200,28 @@ public class Quad {
             return new Quad(database, r.getInt("ID"), r.getInt("TOKEN1"), r.getInt("TOKEN2"), r.getInt("TOKEN3"),
                     r.getInt("TOKEN4"), r.getBoolean("CANSTART"), r.getBoolean("CANEND"));
 
-        } catch (SQLException ex) {
+        } catch (final SQLException ex) {
             l.error("Couldn't fetch quad", ex);
             return null;
+        }
+    }
+
+    /**
+     * Links this quad to a following quad.
+     * 
+     * @param database
+     *            The DB to the quad is in
+     * @param right
+     *            A quad that can follow this one
+     */
+    public void linkToRight(final Database database, final Quad right) {
+        try {
+            if (!database.query("SELECT * FROM QUAD_LINKS WHERE LEFT=" + mId + " AND RIGHT=" + right.mId).first()) {
+                database.insert("INSERT INTO QUAD_LINKS (LEFT, RIGHT) VALUES (" + mId + ", " + right.mId + ")");
+            }
+        } catch (final SQLException ex) {
+            l.error("Can't insert quad link", ex);
+            return;
         }
     }
 
@@ -297,7 +316,19 @@ public class Quad {
      * @return A quad that can follow this one
      */
     public Quad getNext() {
-        return get(mDatabase, mTokens[1], mTokens[2], mTokens[3], null);
+        try {
+            final ResultSet r = mDatabase.query("SELECT Q.* FROM QUADS Q, QUAD_LINKS QL WHERE QL.LEFT=" + mId
+                    + " AND QL.RIGHT=Q.ID ORDER BY RAND() LIMIT 1");
+
+            if (!r.first()) return null;
+
+            return new Quad(mDatabase, r.getInt("ID"), r.getInt("TOKEN1"), r.getInt("TOKEN2"), r.getInt("TOKEN3"),
+                    r.getInt("TOKEN4"), r.getBoolean("CANSTART"), r.getBoolean("CANEND"));
+
+        } catch (final SQLException ex) {
+            l.error("Couldn't fetch quad", ex);
+            return null;
+        }
     }
 
     /**
@@ -306,7 +337,19 @@ public class Quad {
      * @return A quad that can preceed this one
      */
     public Quad getPrev() {
-        return get(mDatabase, null, mTokens[0], mTokens[1], mTokens[2]);
+        try {
+            final ResultSet r = mDatabase.query("SELECT Q.* FROM QUADS Q, QUAD_LINKS QL WHERE QL.RIGHT=" + mId
+                    + " AND QL.LEFT=Q.ID ORDER BY RAND() LIMIT 1");
+
+            if (!r.first()) return null;
+
+            return new Quad(mDatabase, r.getInt("ID"), r.getInt("TOKEN1"), r.getInt("TOKEN2"), r.getInt("TOKEN3"),
+                    r.getInt("TOKEN4"), r.getBoolean("CANSTART"), r.getBoolean("CANEND"));
+
+        } catch (final SQLException ex) {
+            l.error("Couldn't fetch quad", ex);
+            return null;
+        }
     }
 
     @Override
@@ -321,9 +364,7 @@ public class Quad {
 
     @Override
     public boolean equals(final Object o) {
-        if (!(o instanceof Quad)) {
-            return false;
-        }
+        if (!(o instanceof Quad)) return false;
         final Quad other = (Quad) o;
         return other.mTokens[0].equals(mTokens[0]) && other.mTokens[1].equals(mTokens[1])
                 && other.mTokens[2].equals(mTokens[2]) && other.mTokens[3].equals(mTokens[3]);
