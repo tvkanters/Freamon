@@ -87,13 +87,17 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     private abstract class PrivateParameterCommandHandler implements PrivateCommandHandler {
         @Override
-        public String handleCommand(PrivateMessageEvent<Network> event) {
-            String message = event.getMessage();
-            String[] parts = message.split(" ");
+        public String handleCommand(final PrivateMessageEvent<Network> event) {
+            final String message = event.getMessage();
+            final String[] parts = message.split(" ");
             if (parts.length < 2) {
                 return "No parameter specified. Add a parameter after the command seperated by space.";
             } else {
-                return this.handleCommand(event, parts[1]);
+                String param = "";
+                for (int i = 1; i < parts.length; ++i) {
+                    param += (i > 1 ? " " : "") + parts[i];
+                }
+                return this.handleCommand(event, param);
             }
         }
 
@@ -116,9 +120,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     private abstract class PriviledgedCommandHandler extends PrivateParameterCommandHandler {
         @Override
-        public String handleCommand(PrivateMessageEvent<Network> event, String param) {
+        public String handleCommand(final PrivateMessageEvent<Network> event, final String param) {
             if (authed.contains(getAuthID(event.getUser().getNick(), event.getBot()))) {
-                return this.handleAuthedCommand(event, param);
+                return handleAuthedCommand(event, param);
             } else {
                 return "You are not authenticated.";
             }
@@ -141,7 +145,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     private abstract class OpsCommandHandler implements PublicCommandHandler {
         @Override
-        public String handleCommand(MessageEvent<Network> event) {
+        public String handleCommand(final MessageEvent<Network> event) {
             if (event.getChannel().getOps().contains(event.getUser())) {
                 return handleOpsCommand(event);
             } else {
@@ -188,23 +192,23 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
          * @param newMin
          * @param newMax
          */
-        public PriviledgedNumberCommandHandler(int newMin, int newMax) {
-            this.min = newMin;
-            this.max = newMax;
+        public PriviledgedNumberCommandHandler(final int newMin, final int newMax) {
+            min = newMin;
+            max = newMax;
         }
 
         @Override
-        public String handleAuthedCommand(PrivateMessageEvent<Network> event, String param) {
+        public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String param) {
             int value = Integer.MIN_VALUE;
 
             try {
                 value = Integer.parseInt(param);
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 return "Malformed number " + param;
             }
 
-            if (value < this.min || value > this.max) {
-                return "Value must be between " + this.min + " and " + this.max + ".";
+            if (value < min || value > max) {
+                return "Value must be between " + min + " and " + max + ".";
             }
 
             return this.handleAuthedCommand(event, value);
@@ -229,11 +233,11 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     private abstract class ChannelCommandHandler extends PriviledgedCommandHandler {
         @Override
-        public String handleAuthedCommand(PrivateMessageEvent<Network> event, String channel) {
+        public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String channel) {
             if (!channel.matches(Configuration.CHANNEL_MATCH)) {
                 return "Malformed channel: " + channel;
             } else {
-                return this.handleChannelCommand(event, channel);
+                return handleChannelCommand(event, channel);
             }
         }
 
@@ -257,13 +261,13 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      */
     private abstract class JoinCommandHandler extends ChannelCommandHandler {
         @Override
-        public String handleChannelCommand(PrivateMessageEvent<Network> event, String channel) {
-            Network target = event.getBot();
+        public String handleChannelCommand(final PrivateMessageEvent<Network> event, final String channel) {
+            final Network target = event.getBot();
             if (target.channelKnown(channel)) {
                 return "Already in channel " + channel;
             }
 
-            return this.joinChannel(target, channel);
+            return joinChannel(target, channel);
         }
 
         /**
@@ -296,22 +300,23 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      * @param newClient
      * @param newHalResponder
      */
-    public CommandResponseGenerator(IRCClient newClient, FreamonHalResponseGenerator newHalResponder) {
-        this.client = newClient;
-        this.halResponder = newHalResponder;
+    public CommandResponseGenerator(final IRCClient newClient, final FreamonHalResponseGenerator newHalResponder) {
+        client = newClient;
+        halResponder = newHalResponder;
 
-        PrivateCommandHandler authHandler = new PrivateCommandHandler() {
-            public String handleCommand(PrivateMessageEvent<Network> event) {
-                User user = event.getUser();
+        final PrivateCommandHandler authHandler = new PrivateCommandHandler() {
+            @Override
+            public String handleCommand(final PrivateMessageEvent<Network> event) {
+                final User user = event.getUser();
                 if (authed.contains(user)) {
                     return "Already authed.";
                 } else {
-                    String[] parts = event.getMessage().split(" ");
+                    final String[] parts = event.getMessage().split(" ");
                     if (parts.length < 2) {
                         return "You must specify a password after the command.";
                     } else {
                         if (parts[1].equals(Configuration.getPassword())) {
-                            String id = getAuthID(user.getNick(), event.getBot());
+                            final String id = getAuthID(user.getNick(), event.getBot());
                             auth(id);
                             return "Successfully authenticated as an admin.";
                         } else {
@@ -322,34 +327,34 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler activeJoinHandler = new JoinCommandHandler() {
+        final PrivateCommandHandler activeJoinHandler = new JoinCommandHandler() {
             @Override
-            public String joinChannel(Network network, String channel) {
+            public String joinChannel(final Network network, final String channel) {
                 network.addActiveChannel(channel);
                 return "Joined as an active user.";
             }
         };
 
-        PrivateCommandHandler lurkHandler = new JoinCommandHandler() {
+        final PrivateCommandHandler lurkHandler = new JoinCommandHandler() {
             @Override
-            public String joinChannel(Network network, String channel) {
+            public String joinChannel(final Network network, final String channel) {
                 network.addPassiveChannel(channel);
                 return "Joined as a lurker.";
             }
         };
 
-        PrivateCommandHandler politeHandler = new JoinCommandHandler() {
+        final PrivateCommandHandler politeHandler = new JoinCommandHandler() {
             @Override
-            public String joinChannel(Network network, String channel) {
+            public String joinChannel(final Network network, final String channel) {
                 network.addPoliteChannel(channel);
                 return "Joined as a polite user.";
             }
         };
 
-        PrivateCommandHandler partHandler = new ChannelCommandHandler() {
+        final PrivateCommandHandler partHandler = new ChannelCommandHandler() {
             @Override
-            public String handleChannelCommand(PrivateMessageEvent<Network> event, String channel) {
-                Network target = event.getBot();
+            public String handleChannelCommand(final PrivateMessageEvent<Network> event, final String channel) {
+                final Network target = event.getBot();
                 if (!target.channelKnown(channel)) {
                     return "Not in channel " + channel;
                 }
@@ -359,27 +364,27 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler networkAdditionHandler = new PriviledgedCommandHandler() {
+        final PrivateCommandHandler networkAdditionHandler = new PriviledgedCommandHandler() {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, String network) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String network) {
                 String host = network;
                 int port = Configuration.DEFAULT_PORT;
 
                 if (network.contains(":")) {
-                    String[] parts = network.split(":");
+                    final String[] parts = network.split(":");
                     host = parts[0];
                     try {
                         port = Integer.parseInt(parts[1]);
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                         return "Malformed port: " + network;
                     }
                 }
 
-                Network created = new Network(host, port, event.getBot().getNickNames(), Configuration.getUserName(),
-                        Configuration.getRealName(), Configuration.getClientName());
+                final Network created = new Network(host, port, event.getBot().getNickNames(),
+                        Configuration.getUserName(), Configuration.getRealName(), Configuration.getClientName());
                 try {
                     client.addNetwork(created);
-                } catch (Exception e) {
+                } catch (final Exception e) {
                     return "Could not connect: " + e.getMessage();
                 }
 
@@ -387,9 +392,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler networkRemovalHandler = new PriviledgedCommandHandler() {
+        final PrivateCommandHandler networkRemovalHandler = new PriviledgedCommandHandler() {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, String param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String param) {
                 if (event.getBot().getUrl().equals(param)) {
                     return "Can't delete the network you are talking to me on.";
                 }
@@ -402,9 +407,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler nickChangeHandler = new PriviledgedCommandHandler() {
+        final PrivateCommandHandler nickChangeHandler = new PriviledgedCommandHandler() {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, String param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String param) {
                 if (param.length() < 2 || !param.matches("[a-zA-Z_\\-]*")) {
                     return "Please specify a name that is longer than two characters and matches [a-zA-Z_\\-]*.";
                 }
@@ -414,16 +419,16 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler quitHandler = new PrivateCommandHandler() {
+        final PrivateCommandHandler quitHandler = new PrivateCommandHandler() {
             @Override
-            public String handleCommand(PrivateMessageEvent<Network> event) {
-                String id = getAuthID(event.getUser().getNick(), event.getBot());
+            public String handleCommand(final PrivateMessageEvent<Network> event) {
+                final String id = getAuthID(event.getUser().getNick(), event.getBot());
                 if (authed.contains(id)) {
                     event.getBot().sendMessage(event.getUser(), "Bye!");
                     client.doDisconnect();
 
                     l.info("Storing the current brain state.");
-                    FreamonHal hal = halResponder.getFreamonHal();
+                    final FreamonHal hal = halResponder.getFreamonHal();
                     l.trace("Attempting lock on the Freamon instance.");
                     synchronized (hal) {
                         hal.save();
@@ -435,52 +440,52 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler greetChance = new PriviledgedNumberCommandHandler(0, Configuration.CHANCE_MAX) {
+        final PrivateCommandHandler greetChance = new PriviledgedNumberCommandHandler(0, Configuration.CHANCE_MAX) {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, int param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final int param) {
                 Configuration.setGreetChance(param);
                 return "Set the new greeting chance to " + param + "%.";
             }
         };
 
-        PrivateCommandHandler publicChance = new PriviledgedNumberCommandHandler(0, Configuration.CHANCE_MAX) {
+        final PrivateCommandHandler publicChance = new PriviledgedNumberCommandHandler(0, Configuration.CHANCE_MAX) {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, int param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final int param) {
                 Configuration.setPubResponseChance(param);
                 return "Set the new public response chance to " + param + "%.";
             }
         };
 
-        PrivateCommandHandler pingChance = new PriviledgedNumberCommandHandler(0, Configuration.CHANCE_MAX) {
+        final PrivateCommandHandler pingChance = new PriviledgedNumberCommandHandler(0, Configuration.CHANCE_MAX) {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, int param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final int param) {
                 Configuration.setPubResponseChance(param);
                 return "Set the new pinged response chance to " + param + "%.";
             }
         };
 
-        PrivateCommandHandler cooldown = new PriviledgedNumberCommandHandler(Configuration.MIN_COOLDOWN,
+        final PrivateCommandHandler cooldown = new PriviledgedNumberCommandHandler(Configuration.MIN_COOLDOWN,
                 Configuration.MAX_COOLDOWN) {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, int param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final int param) {
                 Configuration.setCooldown(param);
                 return "Set the new cooldown to " + param + "s.";
             }
         };
 
-        PrivateCommandHandler minDelay = new PriviledgedNumberCommandHandler(Configuration.MIN_MIN_DELAY,
+        final PrivateCommandHandler minDelay = new PriviledgedNumberCommandHandler(Configuration.MIN_MIN_DELAY,
                 Configuration.MAX_MIN_DELAY) {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, int param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final int param) {
                 Configuration.setMinDelay(param);
                 return "Set the new minimum delay to " + param + "ms.";
             }
         };
 
-        PrivateCommandHandler maxDelay = new PriviledgedNumberCommandHandler(Configuration.MIN_MAX_DELAY,
+        final PrivateCommandHandler maxDelay = new PriviledgedNumberCommandHandler(Configuration.MIN_MAX_DELAY,
                 Configuration.MAX_MAX_DELAY) {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, int param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final int param) {
                 if (Configuration.getMinDelay() < param) {
                     Configuration.setMaxDelay(param);
                     return "Set the new maximum delay to " + param + "ms.";
@@ -491,11 +496,11 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PrivateCommandHandler brainSwitch = new PriviledgedCommandHandler() {
+        final PrivateCommandHandler brainSwitch = new PriviledgedCommandHandler() {
 
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, String param) {
-                File brain = new File(param);
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String param) {
+                final File brain = new File(param);
                 if (!brain.exists() || !brain.canRead()) {
                     return "The brain file either doesn't exist or is not readable: " + brain;
                 }
@@ -505,7 +510,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
                                 event.getUser(),
                                 "Switching the brain to " + brain
                                         + ". It might take a while. I will notify you when I'm done.");
-                FreamonHal hal = halResponder.getFreamonHal();
+                final FreamonHal hal = halResponder.getFreamonHal();
                 FreamonHal newHal = null;
                 l.trace("Attempting lock on the Freamon instance.");
                 synchronized (hal) {
@@ -514,7 +519,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
                     try {
                         newHal = SerializedFreamonHalTools.read(brain);
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                         return "Error while reading new brain " + e.getMessage();
                     }
 
@@ -528,81 +533,101 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
-        PublicCommandHandler tireHandler = new OpsCommandHandler() {
+        final PublicCommandHandler tireHandler = new OpsCommandHandler() {
             @Override
-            public String handleOpsCommand(MessageEvent<Network> event) {
+            public String handleOpsCommand(final MessageEvent<Network> event) {
                 client.becomeTired(event.getChannel());
                 return event.getUser().getNick() + ": ok i go now";
             }
 
             @Override
-            public String handleNonOpsCommand(MessageEvent<Network> event) {
+            public String handleNonOpsCommand(final MessageEvent<Network> event) {
                 return event.getUser().getNick() + ": no";
             }
         };
 
-        PublicCommandHandler untireHandler = new OpsCommandHandler() {
+        final PublicCommandHandler untireHandler = new OpsCommandHandler() {
             @Override
-            public String handleOpsCommand(MessageEvent<Network> event) {
+            public String handleOpsCommand(final MessageEvent<Network> event) {
                 client.becomeTired(event.getChannel(), -1);
                 return ":D";
             }
 
             @Override
-            public String handleNonOpsCommand(MessageEvent<Network> event) {
+            public String handleNonOpsCommand(final MessageEvent<Network> event) {
                 return null;
             }
         };
 
-        PrivateCommandHandler privateUntireHandler = new PriviledgedCommandHandler() {
+        final PrivateCommandHandler privateUntireHandler = new PriviledgedCommandHandler() {
             @Override
-            public String handleAuthedCommand(PrivateMessageEvent<Network> event, String param) {
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String param) {
                 client.becomeTired(param, -1);
                 return ":D";
             }
         };
 
-        PublicCommandHandler wisdomHandler = new PublicCommandHandler() {
+        final PublicCommandHandler wisdomHandler = new PublicCommandHandler() {
             @Override
-            public String handleCommand(MessageEvent<Network> event) {
+            public String handleCommand(final MessageEvent<Network> event) {
                 return Colors.BOLD
                         + halResponder.respondPublic(new MessageEvent<Network>(event.getBot(), event.getChannel(),
                                 event.getUser(), "are"));
             }
         };
 
-        this.privateHandlers.put("!auth", authHandler);
-        this.privateHandlers.put("!nick", nickChangeHandler);
-        this.privateHandlers.put("!join", activeJoinHandler);
-        this.privateHandlers.put("!lurk", lurkHandler);
-        this.privateHandlers.put("!polite", politeHandler);
-        this.privateHandlers.put("!networkadd", networkAdditionHandler);
-        this.privateHandlers.put("!networkdel", networkRemovalHandler);
-        this.privateHandlers.put("!quit", quitHandler);
-        this.privateHandlers.put("!part", partHandler);
-        this.privateHandlers.put("!pubchance", publicChance);
-        this.privateHandlers.put("!pingchance", pingChance);
-        this.privateHandlers.put("!greetchance", greetChance);
-        this.privateHandlers.put("!cooldown", cooldown);
-        this.privateHandlers.put("!mindelay", minDelay);
-        this.privateHandlers.put("!maxdelay", maxDelay);
-        this.privateHandlers.put("!brainswitch", brainSwitch);
-        this.privateHandlers.put("!plscome", privateUntireHandler);
+        final PrivateCommandHandler messageInjectHandler = new PriviledgedCommandHandler() {
+            @Override
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String param) {
+                final int firstSpace = param.indexOf(' ');
+                if (firstSpace == -1) {
+                    return "Invalid parameters";
+                } else {
+                    final String channel = param.substring(0, firstSpace);
+                    final String message = param.substring(firstSpace);
+                    if (event.getBot().channelKnown(channel)) {
+                        event.getBot().getChannel(channel).sendMessage(message);
+                        return "Message sent to " + channel;
+                    } else {
+                        return "Not in channel " + channel;
+                    }
+                }
+            }
+        };
 
-        this.publicHandlers.put("!plsgo", tireHandler);
-        this.publicHandlers.put("!plscome", untireHandler);
-        this.publicHandlers.put("!freamonwisdom", wisdomHandler);
+        privateHandlers.put("!auth", authHandler);
+        privateHandlers.put("!nick", nickChangeHandler);
+        privateHandlers.put("!join", activeJoinHandler);
+        privateHandlers.put("!lurk", lurkHandler);
+        privateHandlers.put("!polite", politeHandler);
+        privateHandlers.put("!networkadd", networkAdditionHandler);
+        privateHandlers.put("!networkdel", networkRemovalHandler);
+        privateHandlers.put("!quit", quitHandler);
+        privateHandlers.put("!part", partHandler);
+        privateHandlers.put("!pubchance", publicChance);
+        privateHandlers.put("!pingchance", pingChance);
+        privateHandlers.put("!greetchance", greetChance);
+        privateHandlers.put("!cooldown", cooldown);
+        privateHandlers.put("!mindelay", minDelay);
+        privateHandlers.put("!maxdelay", maxDelay);
+        privateHandlers.put("!brainswitch", brainSwitch);
+        privateHandlers.put("!plscome", privateUntireHandler);
+        privateHandlers.put("!inject", messageInjectHandler);
+
+        publicHandlers.put("!plsgo", tireHandler);
+        publicHandlers.put("!plscome", untireHandler);
+        publicHandlers.put("!freamonwisdom", wisdomHandler);
     }
 
     @Override
-    public String respondPublic(MessageEvent<Network> event) {
-        String command = this.extractCommand(event.getMessage());
+    public String respondPublic(final MessageEvent<Network> event) {
+        final String command = extractCommand(event.getMessage());
         if (command == null) {
             return null;
         }
 
         l.trace("Attempting to handle public command: " + command);
-        if (this.publicHandlers.containsKey(command)) {
+        if (publicHandlers.containsKey(command)) {
             l.debug("Handling public command: " + command + " by user " + event.getUser());
             return publicHandlers.get(command).handleCommand(event);
         } else {
@@ -611,14 +636,14 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     }
 
     @Override
-    public synchronized String respondPrivate(PrivateMessageEvent<Network> event) {
-        String command = this.extractCommand(event.getMessage());
+    public synchronized String respondPrivate(final PrivateMessageEvent<Network> event) {
+        final String command = extractCommand(event.getMessage());
         if (command == null) {
             return null;
         }
 
         l.trace("Attempting to handle private command: " + command);
-        if (this.privateHandlers.containsKey(command)) {
+        if (privateHandlers.containsKey(command)) {
             l.debug("Handling private command: " + command + " by user " + event.getUser());
             return privateHandlers.get(command).handleCommand(event);
         } else {
@@ -632,8 +657,8 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      * @param id
      *            The auth ID of the user.
      */
-    private void auth(String id) {
-        this.authed.add(id);
+    private void auth(final String id) {
+        authed.add(id);
         l.debug("Authed user: " + id);
     }
 
@@ -645,7 +670,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      * 
      * @return True iff the ID was present and is now removed
      */
-    private boolean deauth(String id) {
+    private boolean deauth(final String id) {
         if (authed.remove(id)) {
             l.debug("Deauthed user: " + id);
             return true;
@@ -657,8 +682,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     /**
      * If an authenticated user changes nicknames, we will consider him no longer authenticated.
      */
-    public synchronized void onNickChange(NickChangeEvent<Network> event) {
-        String id = this.getAuthID(event.getOldNick(), event.getBot());
+    @Override
+    public synchronized void onNickChange(final NickChangeEvent<Network> event) {
+        final String id = getAuthID(event.getOldNick(), event.getBot());
         if (deauth(id)) {
             l.info(event.getUser() + " changed from " + event.getOldNick() + " to " + event.getNewNick()
                     + ". Deauthing him.");
@@ -668,8 +694,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     /**
      * If an authenticated user quits, we will consider him no longer authenticated.
      */
-    public synchronized void onQuit(QuitEvent<Network> event) {
-        String id = this.getAuthID(event.getUser().getNick(), event.getBot());
+    @Override
+    public synchronized void onQuit(final QuitEvent<Network> event) {
+        final String id = getAuthID(event.getUser().getNick(), event.getBot());
         if (deauth(id)) {
             l.info(id + " has quit. Deauthing him.");
         }
@@ -678,8 +705,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     /**
      * If an authenticated user parts, we will consider him no longer authenticated.
      */
-    public synchronized void onPart(PartEvent<Network> event) {
-        String id = this.getAuthID(event.getUser().getNick(), event.getBot());
+    @Override
+    public synchronized void onPart(final PartEvent<Network> event) {
+        final String id = getAuthID(event.getUser().getNick(), event.getBot());
         if (deauth(id)) {
             l.info(id + " has quit. Deauthing him.");
         }
@@ -694,7 +722,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      *            The network he's on.
      * @return The respective auth ID
      */
-    private String getAuthID(String name, Network network) {
+    private String getAuthID(final String name, final Network network) {
         return name + "@" + network.getUrl();
     }
 
@@ -705,9 +733,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
      *            The message to scan through.
      * @return The command found, including the !. null if none was found.
      */
-    private String extractCommand(String message) {
+    private String extractCommand(final String message) {
         if (message.startsWith("!")) {
-            String[] parts = message.split(" ");
+            final String[] parts = message.split(" ");
             if (parts.length > 0) {
                 return parts[0];
             }
