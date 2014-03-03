@@ -57,13 +57,11 @@ public abstract class MessageSanitizer {
 
         message = URL.matcher(message).replaceAll("");
 
-        for (String ignore : IGNORED) {
+        for (final String ignore : IGNORED) {
             message = message.replace(ignore, "");
         }
 
-        if (message.matches("^\\d*$")) {
-            return null;
-        }
+        if (message.matches("^\\d*$")) return null;
 
         return message;
     }
@@ -76,7 +74,6 @@ public abstract class MessageSanitizer {
      * <li>Remove any string from {@link MessageSanitizer#REDUCE} and replace it with it's compacted counterpart.</li>
      * <li>Replace erroneous "g"s being placed at either start or end of the message.</li>
      * <li>Insert a space to every . ! ? or , that directly leads into a word.</li>
-     * <li>Add a . if neither . nor ? nor ! is present at the end of the message.</li>
      * </ul>
      * 
      * The beautified message is then returned.
@@ -85,12 +82,12 @@ public abstract class MessageSanitizer {
      *            The message to improve.
      * @return The improved version.
      */
-    public static String beautifyMessage(String message) {
+    public static String beautifyMessage(final String message) {
         String b = message;
         b = b.replaceAll("^[^a-zA-Z]*", "");
         b = b.substring(0, 1).toUpperCase() + b.substring(1);
 
-        for (String reduction : REDUCE) {
+        for (final String reduction : REDUCE) {
             while (b.contains(reduction)) {
                 b = b.replace(reduction, reduction.substring(1));
             }
@@ -98,7 +95,6 @@ public abstract class MessageSanitizer {
 
         b = b.replaceAll("(^g | g$)", "");
         b = b.replaceAll("([.?!,])\\w", "$1 ");
-        b = b.replaceAll("([^.?!])$", "$1.");
 
         return b;
     }
@@ -110,8 +106,8 @@ public abstract class MessageSanitizer {
      *            The word to check.
      * @return True iff there are only whitespace characters in the given word.
      */
-    public static boolean emptyString(String word) {
-        Matcher matcher = SPACE.matcher(word);
+    public static boolean emptyString(final String word) {
+        final Matcher matcher = SPACE.matcher(word);
         return matcher.matches();
     }
 }
