@@ -259,7 +259,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
             return;
         }
 
-        if (name.trim().length() < 4 || peopleNames.contains(name) || !name.matches(NICKNAME)) {
+        if (name.trim().length() < 3 || peopleNames.contains(name) || !name.matches(NICKNAME)) {
             return;
         }
 
