@@ -33,7 +33,7 @@ public class Quad {
     /**
      * Saves the quad specified by its parameters. Will first attempt to retrieve a quad from the database and update
      * its start and end options if needed.
-     * 
+     *
      * @param database
      *            The database to put the quad in
      * @param keyword1
@@ -48,14 +48,18 @@ public class Quad {
      *            Whether or not this quad can start a sentence
      * @param canEnd
      *            Whether or not this quad can end a sentence
-     * 
+     *
      * @return The retrieved or created quad
      */
     public static Quad put(final Database database, final String keyword1, final String keyword2,
             final String keyword3, final String keyword4, final boolean canStart, final boolean canEnd) {
+        final Token token1 = Token.put(database, keyword1);
+        final Token token2 = Token.put(database, keyword2);
+        final Token token3 = Token.put(database, keyword3);
+        final Token token4 = Token.put(database, keyword4);
 
         // Try to retrieve an existing quad
-        final Quad quad = get(database, keyword1, keyword2, keyword3, keyword4);
+        final Quad quad = get(database, token1, token2, token3, token4);
         if (quad != null) {
             try {
                 // Allow start and end values if now made possible
@@ -74,11 +78,6 @@ public class Quad {
         } else {
             // If no quad exists, insert a new one
             try {
-                final Token token1 = Token.put(database, keyword1);
-                final Token token2 = Token.put(database, keyword2);
-                final Token token3 = Token.put(database, keyword3);
-                final Token token4 = Token.put(database, keyword4);
-
                 final int id = database
                         .insert("INSERT INTO QUADS (TOKEN1, TOKEN2, TOKEN3, TOKEN4, CANSTART, CANEND) VALUES ("
                                 + token1.getId() + ", " + token2.getId() + ", " + token3.getId() + ", "
@@ -93,7 +92,7 @@ public class Quad {
 
     /**
      * Retrieves a quad based on the given tokens.
-     * 
+     *
      * @param database
      *            The database to search
      * @param token1
@@ -104,7 +103,7 @@ public class Quad {
      *            The third token or null for any
      * @param token4
      *            The fourth token or null for any
-     * 
+     *
      * @return The matching quad or null if no quad with the specified tokens was found
      */
     public static Quad get(final Database database, final Token token1, final Token token2, final Token token3,
@@ -143,35 +142,13 @@ public class Quad {
     }
 
     /**
-     * Retrieves a quad based on the given tokens.
-     * 
-     * @param database
-     *            The database to search
-     * @param token1
-     *            The first token or null for any
-     * @param token2
-     *            The second token or null for any
-     * @param token3
-     *            The third token or null for any
-     * @param token4
-     *            The fourth token or null for any
-     * 
-     * @return The matching quad or null if no quad with the specified tokens was found
-     */
-    public static Quad get(final Database database, final String token1, final String token2, final String token3,
-            final String token4) {
-        return get(database, Token.get(database, token1), Token.get(database, token2), Token.get(database, token3),
-                Token.get(database, token4));
-    }
-
-    /**
      * Retrieves a quad based on the given keyword.
-     * 
+     *
      * @param database
      *            The database to search
      * @param keyword
      *            The keyword that must occur within the quad
-     * 
+     *
      * @return The matching quad, a random quad if there is no match or null if there are no quads
      */
     public static Quad get(final Database database, final String keyword) {
@@ -208,7 +185,7 @@ public class Quad {
 
     /**
      * Links this quad to a following quad.
-     * 
+     *
      * @param database
      *            The DB to the quad is in
      * @param right
@@ -227,7 +204,7 @@ public class Quad {
 
     /**
      * Prepares a new quad model.
-     * 
+     *
      * @param database
      *            The DB to the quad is in
      * @param id
@@ -253,7 +230,7 @@ public class Quad {
 
     /**
      * Prepares a new quad model.
-     * 
+     *
      * @param database
      *            The DB to the quad is in
      * @param id
@@ -282,10 +259,10 @@ public class Quad {
 
     /**
      * Retrieves a token from the quad.
-     * 
+     *
      * @param index
      *            The index of the token, may range from 0 to 3
-     * 
+     *
      * @return The token at the specified index
      */
     public Token getToken(final int index) {
@@ -294,7 +271,7 @@ public class Quad {
 
     /**
      * Whether or not a sentence can start with this quad.
-     * 
+     *
      * @return True iff the sentence may start with this quad
      */
     public boolean canStart() {
@@ -303,7 +280,7 @@ public class Quad {
 
     /**
      * Whether or not a sentence can end with this quad.
-     * 
+     *
      * @return True iff the sentence may end with this quad
      */
     public boolean canEnd() {
@@ -312,7 +289,7 @@ public class Quad {
 
     /**
      * Retrieves a random quad that may follow this one or null if none is available.
-     * 
+     *
      * @return A quad that can follow this one
      */
     public Quad getNext() {
@@ -333,7 +310,7 @@ public class Quad {
 
     /**
      * Retrieves a random quad that may preceed this one or null if none is available.
-     * 
+     *
      * @return A quad that can preceed this one
      */
     public Quad getPrev() {

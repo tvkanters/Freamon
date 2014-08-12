@@ -584,7 +584,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
                     return "Invalid parameters";
                 } else {
                     final String channel = param.substring(0, firstSpace);
-                    final String message = param.substring(firstSpace);
+                    final String message = param.substring(firstSpace + 1);
                     if (event.getBot().channelKnown(channel)) {
                         event.getBot().getChannel(channel).sendMessage(message);
                         return "Message sent to " + channel;
