@@ -53,7 +53,7 @@ public abstract class MessageSanitizer {
     public static String filterMessage(String message) {
         message = message.trim();
         message = message.replaceAll(" +", " ");
-        message = message.replaceAll("!\\w*", "");
+        message = message.replaceAll("!\\w+", "");
 
         message = URL.matcher(message).replaceAll("");
 
