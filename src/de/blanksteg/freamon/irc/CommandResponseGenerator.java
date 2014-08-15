@@ -34,14 +34,14 @@ import de.blanksteg.freamon.hal.SerializedFreamonHalTools;
  * <li>Change the brain base used for {@link FreamonHal}.
  * <li>Quit the application.</li>
  * </ul>
- * 
+ *
  * Because the functionality described above can easily be abused by some adversary, most commands require a user to be
  * authenticated. Authenticated means the respective user has sent the bot a private message containing the
  * authorization command and the password specified in {@link Configuration#getPassword()}. A user is considered authed
  * as long as he doesn't change his name or disconnect from the network he authenticated from.
- * 
+ *
  * For an detailed explanation of the possible commands and their parameters, consult the manual.
- * 
+ *
  * @author Marc Müller
  */
 public class CommandResponseGenerator extends ListenerAdapter<Network> implements ResponseGenerator {
@@ -51,13 +51,13 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     /**
      * An internal interface used to delegate actual command handling to small, mostly anonymous classes that can be
      * stored in a map.
-     * 
+     *
      * @author Marc Müller
      */
     private static interface PrivateCommandHandler {
         /**
          * Handle the command stored in the given event.
-         * 
+         *
          * @param event
          *            The event the command is in.
          * @return The result of the execution.
@@ -72,7 +72,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     private static interface PublicCommandHandler {
         /**
          * Handle the command stored in the given event.
-         * 
+         *
          * @param event
          *            The event the command is in.
          * @return The result of the execution.
@@ -82,7 +82,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * A general class used for commands that require an additional parameter.
-     * 
+     *
      * @author Marc Müller
      */
     private abstract class PrivateParameterCommandHandler implements PrivateCommandHandler {
@@ -103,7 +103,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         /**
          * Handle the command stored in the given event that has the given parameter.
-         * 
+         *
          * @param event
          *            The event the command was contained in.
          * @param param
@@ -115,7 +115,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * A general class used for commands that required a user to be authenticated.
-     * 
+     *
      * @author Marc Müller
      */
     private abstract class PriviledgedCommandHandler extends PrivateParameterCommandHandler {
@@ -130,7 +130,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         /**
          * Safely handle the command contained in the given event that was passed the given parameter.
-         * 
+         *
          * @param event
          *            The event the command has caused.
          * @param param
@@ -155,20 +155,20 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         /**
          * Safely handle the command contained in the given event.
-         * 
+         *
          * @param event
          *            The event the command has caused.
-         * 
+         *
          * @return The result of the execution.
          */
         public abstract String handleOpsCommand(MessageEvent<Network> event);
 
         /**
          * Handle the command contained in the given event when requested by non-ops.
-         * 
+         *
          * @param event
          *            The event the command has caused.
-         * 
+         *
          * @return The result of the execution.
          */
         public abstract String handleNonOpsCommand(MessageEvent<Network> event);
@@ -177,7 +177,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     /**
      * A general command handler used for privileged commands that require a number within a certain range as their
      * parameter.
-     * 
+     *
      * @author Marc Müller
      */
     private abstract class PriviledgedNumberCommandHandler extends PriviledgedCommandHandler {
@@ -188,7 +188,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         /**
          * Create a new instance accepting values from newMin to newMax.
-         * 
+         *
          * @param newMin
          * @param newMax
          */
@@ -216,7 +216,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         /**
          * Handle the privileged command with the parameter within the legal range.
-         * 
+         *
          * @param event
          *            The event the command was in.
          * @param param
@@ -228,7 +228,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * A generic handler used for commands requiring a channel as their parameter.
-     * 
+     *
      * @author Marc Müller
      */
     private abstract class ChannelCommandHandler extends PriviledgedCommandHandler {
@@ -243,7 +243,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         /**
          * Handle the command contained in the given event with the given channel name as parameter.
-         * 
+         *
          * @param event
          *            The event caused by the command.
          * @param channel
@@ -256,7 +256,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
     /**
      * A general handler used for join requests. It ensures the bot supposed to join is not already in the requested
      * channel.
-     * 
+     *
      * @author Marc Müller
      */
     private abstract class JoinCommandHandler extends ChannelCommandHandler {
@@ -272,7 +272,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
         /**
          * Join the given channel on the given network.
-         * 
+         *
          * @param network
          *            The network the channel is in.
          * @param channel
@@ -296,7 +296,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * Creates a new command backend for the given {@link IRCClient} and {@link FreamonHalResponseGenerator}.
-     * 
+     *
      * @param newClient
      * @param newHalResponder
      */
@@ -424,8 +424,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             public String handleCommand(final PrivateMessageEvent<Network> event) {
                 final String id = getAuthID(event.getUser().getNick(), event.getBot());
                 if (authed.contains(id)) {
-                    event.getBot().sendMessage(event.getUser(), "Bye!");
-                    client.doDisconnect();
+                    event.getBot().sendMessage(event.getUser(), "Hold up... saving brain");
 
                     l.info("Storing the current brain state.");
                     final FreamonHal hal = halResponder.getFreamonHal();
@@ -433,6 +432,9 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
                     synchronized (hal) {
                         hal.save();
                     }
+
+                    event.getBot().sendMessage(event.getUser(), "Bye!");
+                    client.doDisconnect();
                     return "Bye!";
                 } else {
                     return "You are not authenticated.";
@@ -653,7 +655,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * Remember the user by the given auth ID to be authed.
-     * 
+     *
      * @param id
      *            The auth ID of the user.
      */
@@ -664,10 +666,10 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * Remember the user by the given auth ID to not be authed anymore.
-     * 
+     *
      * @param id
      *            The auth ID of the user.
-     * 
+     *
      * @return True iff the ID was present and is now removed
      */
     private boolean deauth(final String id) {
@@ -715,7 +717,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * Creates the auth ID for the given user on the given network.
-     * 
+     *
      * @param name
      *            The user's name.
      * @param network
@@ -728,7 +730,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
 
     /**
      * Find the command requested in the given message. A command is considered a word that follows a leading !.
-     * 
+     *
      * @param message
      *            The message to scan through.
      * @return The command found, including the !. null if none was found.
