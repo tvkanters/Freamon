@@ -571,27 +571,31 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
         final List<String> talkers = new ArrayList<String>(orderedTalkers.size());
         talkers.addAll(orderedTalkers);
         Collections.shuffle(talkers);
+        final String lastTalker = state.getLastTalker();
 
         // Find the nicknames
         final Set<String> contained = new HashSet<String>(talkers.size());
         final Iterator<String> people = peopleNames.iterator();
+        boolean lastTalkerFound = false;
 
         while (people.hasNext() && talkers.size() != contained.size()) {
             final String currentPerson = people.next();
             if (message.matches("(?i)(^|.*\\W)" + currentPerson + "(\\W.*|$)")) {
-                l.trace("Found person to replace: " + currentPerson);
-                contained.add(currentPerson);
+                if (currentPerson.equals(lastTalker)) {
+                    lastTalkerFound = true;
+                } else {
+                    l.trace("Found person to replace: " + currentPerson);
+                    contained.add(currentPerson);
+                }
             }
         }
 
         if (!contained.isEmpty()) {
             // Make sure the one speaking to Freamon gets mentioned first to avoid unneeded "name: " prefixes
-            final String lastTalker = state.getLastTalker();
-            for (int i = contained.size() - 1; i < talkers.size() - 1; ++i) {
-                talkers.remove(i);
-            }
             talkers.remove(lastTalker);
-            talkers.add(0, lastTalker);
+            if (!lastTalkerFound) {
+                talkers.add(0, lastTalker);
+            }
 
             // Replace the nicknames
             final Iterator<String> match = contained.iterator();
