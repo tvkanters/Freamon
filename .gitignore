@@ -1,5 +1,7 @@
-/freamon.log
 /h2
 /dopelogs
 /dopelogsfull
 /bin
+
+*log
+*.jar
