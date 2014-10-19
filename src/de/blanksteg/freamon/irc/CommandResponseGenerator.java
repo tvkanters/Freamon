@@ -597,6 +597,14 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
             }
         };
 
+        final PrivateCommandHandler qAuthHandler = new PriviledgedCommandHandler() {
+            @Override
+            public String handleAuthedCommand(final PrivateMessageEvent<Network> event, final String param) {
+                event.getBot().getUser("Q@CServe.quakenet.org").sendMessage("AUTH " + param);
+                return "Q auth requested";
+            }
+        };
+
         privateHandlers.put("!auth", authHandler);
         privateHandlers.put("!nick", nickChangeHandler);
         privateHandlers.put("!join", activeJoinHandler);
@@ -615,6 +623,7 @@ public class CommandResponseGenerator extends ListenerAdapter<Network> implement
         privateHandlers.put("!brainswitch", brainSwitch);
         privateHandlers.put("!plscome", privateUntireHandler);
         privateHandlers.put("!inject", messageInjectHandler);
+        privateHandlers.put("!qauth", qAuthHandler);
 
         publicHandlers.put("!plsgo", tireHandler);
         publicHandlers.put("!plscome", untireHandler);
