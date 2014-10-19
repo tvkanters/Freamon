@@ -9,10 +9,10 @@ import de.blanksteg.freamon.hal.FreamonHal;
  * This class uses an underlying {@link FreamonHal} instance to generate responses to both private and public messages
  * using {@link FreamonHal#generateRelevantPrivateMessage(PrivateMessageEvent)} and
  * {@link FreamonHal#generateRelevantPublicMessage(MessageEvent)} respectively.
- * 
+ *
  * A notable feature is that the instance used for responses is changeable throughout the lifetime of this object,
  * meaning one can switch {@link FreamonHal} instances whilst the application is running.
- * 
+ *
  * @author Marc Müller
  */
 public class FreamonHalResponseGenerator implements ResponseGenerator {
@@ -21,7 +21,7 @@ public class FreamonHalResponseGenerator implements ResponseGenerator {
 
     /**
      * Create a new instance using the given {@link FreamonHal} as its base.
-     * 
+     *
      * @param newHal
      *            The base Freamon.
      */
@@ -43,8 +43,9 @@ public class FreamonHalResponseGenerator implements ResponseGenerator {
             return null;
         }
 
-        return hal.generateRelevantPublicMessage(event).replaceAll("(?i)" + event.getBot().getNick(),
-                event.getUser().getNick());
+        return hal.generateRelevantPublicMessage(event)
+                .replaceAll("(?i)" + event.getBot().getNick(), event.getUser().getNick())
+                .replaceAll("pelvis", "LarryLongbow");
     }
 
     @Override

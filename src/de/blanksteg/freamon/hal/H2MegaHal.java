@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright Paul James Mutton, 2001-2004, http://www.jibble.org/
 
 This file is part of JMegaHal.
@@ -43,7 +43,7 @@ public class H2MegaHal implements Hal {
 
     /**
      * Construct an instance of MegaHal with the specified database as brain.
-     * 
+     *
      * @param database
      *            The database to read and write sentences in
      */
@@ -78,7 +78,7 @@ public class H2MegaHal implements Hal {
         final ArrayList<String> tokens = new ArrayList<String>();
         final char[] chars = sentence.trim().toCharArray();
 
-        // Split sentences into parts of words and punctiation/space
+        // Split sentences into parts of words and punctuation/space
         boolean punctuation = false;
         StringBuffer buffer = new StringBuffer();
         for (int i = 0; i < chars.length; ++i) {
@@ -147,7 +147,7 @@ public class H2MegaHal implements Hal {
             tokens.add(quad.getToken(3).getToken());
         }
 
-        // Add possible preceeding tokens to the sentence
+        // Add possible preceding tokens to the sentence
         quad = middleQuad;
         while (!quad.canStart() && (quad = quad.getPrev()) != null) {
             tokens.addFirst(quad.getToken(0).getToken());
@@ -164,7 +164,7 @@ public class H2MegaHal implements Hal {
 
     /**
      * Saves the temporary database to the original one.
-     * 
+     *
      * @return True iff the save action was successful
      */
     @Override

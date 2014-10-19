@@ -25,10 +25,6 @@ public abstract class MessageSanitizer {
             "\\b(([\\w-]+://?|www[.])[^\\s()<>]+(?:\\([\\w\\d]+\\)|([^[:punct:]\\s]|/?)))", Pattern.CASE_INSENSITIVE);
     /** Simple pattern to identify strings containing only whitespace. */
     private static final Pattern SPACE = Pattern.compile("^\\s*$");
-    /** An array of characters to be filtered from messages. */
-    private static final String[] IGNORED = new String[] {
-            // "<", "@", "*", "(", ")", "/", "\\", "[", "]", "\"", "^", ",", ".", "!"
-            "<", "@", "*", "\"", "^" };
 
     /** An array of characters JMegaHAL commonly misuses by giving them too much space. */
     private static final String[] REDUCE = new String[] { " , ", " . ", " ' ", " g ", "  " };
@@ -39,7 +35,6 @@ public abstract class MessageSanitizer {
      * <li>Replace leading !word segments (where word is anything matching \w*).</li>
      * <li>Remove any URL.</li>
      * <li>Remove leading and trailing whitespace.</li>
-     * <li>Remove any occurrence of the characters in {@link MessageSanitizer#IGNORED}.</li>
      * <li>Replace any double spaces with a single one until no double spaces are present.</li>
      * <li>Clear the message if it only contains a number.</li>
      * </ul>
@@ -56,10 +51,6 @@ public abstract class MessageSanitizer {
         message = message.replaceAll("!\\w+", "");
 
         message = URL.matcher(message).replaceAll("");
-
-        for (final String ignore : IGNORED) {
-            message = message.replace(ignore, "");
-        }
 
         if (message.matches("^\\d*$")) return null;
 
