@@ -27,7 +27,7 @@ public abstract class MessageSanitizer {
     private static final Pattern SPACE = Pattern.compile("^\\s*$");
 
     /** An array of characters JMegaHAL commonly misuses by giving them too much space. */
-    private static final String[] REDUCE = new String[] { " , ", " . ", " ' ", " g ", "  " };
+    private static final String[] REDUCE = new String[] { " , ", " . ", " ' ", " g ", "  ", " 's ", " ?", " !" };
 
     /**
      * This method will filter the given message accordingly:
@@ -75,17 +75,12 @@ public abstract class MessageSanitizer {
      */
     public static String beautifyMessage(final String message) {
         String b = message;
-        b = b.replaceAll("^[^a-zA-Z]*", "");
-        b = b.substring(0, 1).toUpperCase() + b.substring(1);
 
         for (final String reduction : REDUCE) {
             while (b.contains(reduction)) {
                 b = b.replace(reduction, reduction.substring(1));
             }
         }
-
-        b = b.replaceAll("(^g | g$)", "");
-        b = b.replaceAll("([.?!,])\\w", "$1 ");
 
         return b;
     }

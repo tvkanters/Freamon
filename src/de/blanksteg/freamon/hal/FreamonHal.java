@@ -376,7 +376,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
      * @return The generated sentence.
      */
     private String generateOriginalMessage() {
-        final String message = hal.getSentence();
+        final String message = MessageSanitizer.beautifyMessage(hal.getSentence());
         l.debug("Generated original message: " + message);
         return message;
     }
@@ -408,6 +408,7 @@ public class FreamonHal extends ListenerAdapter<Network> implements Serializable
                 l.debug("Focus word is: " + focus + ".");
                 String message = attemptMessageGeneration(focus.getWord());
                 message = appropriateNicknames(message, state);
+                message = MessageSanitizer.beautifyMessage(message);
                 if (message != null) {
                     l.debug("Generated relevant message: " + message);
                     return message;
